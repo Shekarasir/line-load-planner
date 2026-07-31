@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinePlan — Production Planning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<style>
+:root{
+  --bg:#0E1A28;
+  --panel:#152538;
+  --panel-2:#1B2E44;
+  --line:#28405A;
+  --text:#E9EEF4;
+  --text-dim:#8CA0B3;
+  --amber:#F2A73A;
+  --amber-dim:#7A5A22;
+  --green:#4CB783;
+  --red:#E5586A;
+  --blue:#5B9BD5;
+  --holiday:#3A2530;
+  --radius:8px;
+  --mono:'JetBrains Mono',monospace;
+  --disp:'Space Grotesk',sans-serif;
+  --body:'Inter',sans-serif;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);}
+header{
+  display:flex;align-items:center;gap:24px;padding:14px 24px;
+  background:var(--panel);border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:50;
+}
+.logo{font-family:var(--disp);font-weight:700;font-size:19px;letter-spacing:0.3px;display:flex;align-items:center;gap:8px;}
+.logo .dot{width:9px;height:9px;border-radius:2px;background:var(--amber);display:inline-block;transform:rotate(45deg);}
+nav{display:flex;gap:4px;flex:1;}
+nav button{
+  background:none;border:none;color:var(--text-dim);padding:9px 14px;border-radius:6px;
+  font-family:var(--body);font-weight:500;font-size:13.5px;cursor:pointer;
+}
+nav button.active{background:var(--panel-2);color:var(--text);}
+nav button:hover{color:var(--text);}
+.sync-badge{font-family:var(--mono);font-size:11.5px;padding:5px 10px;border-radius:5px;display:flex;align-items:center;gap:6px;}
+.sync-local{background:#2A2416;color:var(--amber);}
+.sync-online{background:#132A20;color:var(--green);}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+main{padding:24px;max-width:1500px;margin:0 auto;}
+.view{display:none;}
+.view.active{display:block;}
+h1{font-family:var(--disp);font-size:22px;margin:0 0 4px;}
+.sub{color:var(--text-dim);font-size:13px;margin-bottom:20px;}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:18px;}
+.row{display:flex;gap:14px;flex-wrap:wrap;}
+.field{display:flex;flex-direction:column;gap:5px;min-width:150px;flex:1;}
+.field label{font-size:11.5px;color:var(--text-dim);font-weight:500;text-transform:uppercase;letter-spacing:0.4px;}
+input,select,textarea{
+  background:var(--panel-2);border:1px solid var(--line);color:var(--text);
+  padding:9px 10px;border-radius:6px;font-family:var(--body);font-size:13.5px;
+}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--amber);}
+button.btn{
+  background:var(--amber);color:#1A1305;border:none;padding:10px 18px;border-radius:6px;
+  font-weight:600;font-size:13.5px;cursor:pointer;font-family:var(--body);
+}
+button.btn.secondary{background:var(--panel-2);color:var(--text);border:1px solid var(--line);}
+button.btn.ghost{background:transparent;color:var(--text-dim);border:1px solid var(--line);}
+button.btn.danger{background:var(--red);color:#fff;}
+button.btn:disabled{opacity:0.4;cursor:not-allowed;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;color:var(--text-dim);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;padding:8px 10px;border-bottom:1px solid var(--line);}
+td{padding:9px 10px;border-bottom:1px solid var(--line);}
+tr:hover td{background:rgba(255,255,255,0.02);}
+.tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;}
+.tag-basic{background:#1A3A2A;color:var(--green);}
+.tag-medium{background:#2A2A16;color:var(--amber);}
+.tag-heavy{background:#3A1E22;color:var(--red);}
+.mono{font-family:var(--mono);}
+.link{color:var(--blue);cursor:pointer;text-decoration:underline;}
+.pill{padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:var(--panel-2);color:var(--text-dim);}
+
+/* Job Allocation Chart */
+.jac-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);}
+.jac{border-collapse:collapse;font-family:var(--mono);font-size:11px;min-width:100%;}
+.jac th,.jac td{border:1px solid var(--line);padding:0;text-align:center;}
+.jac th.dayhead{padding:6px 3px;min-width:46px;color:var(--text-dim);font-weight:600;background:var(--panel);position:sticky;top:0;z-index:5;}
+.jac th.dayhead.today{color:var(--amber);}
+.jac th.dayhead.holiday, td.holiday{background:var(--holiday);}
+.jac th.linehead{position:sticky;left:0;background:var(--panel);z-index:6;text-align:left;padding:6px 10px;min-width:150px;font-family:var(--body);}
+.jac th.corner{position:sticky;left:0;top:0;z-index:7;background:var(--panel);min-width:150px;}
+.jac tr.factory-sep td, .jac tr.factory-sep th{border-top:2px solid var(--amber-dim);}
+.cell{height:44px;cursor:pointer;position:relative;padding:2px;}
+.cell:hover{outline:1px solid var(--amber);outline-offset:-1px;}
+.cell .planned{font-weight:600;}
+.cell .achieved{color:var(--text-dim);font-size:9.5px;}
+.util-0{background:var(--panel);}
+.util-low{background:#16281F;color:var(--green);}
+.util-mid{background:#2A2612;color:var(--amber);}
+.util-full{background:#2E1518;color:var(--red);}
+.util-over{background:var(--red);color:#fff;}
+
+/* Modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(6,10,16,0.7);z-index:100;align-items:center;justify-content:center;}
+.modal-bg.show{display:flex;}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:22px;width:460px;max-width:92vw;max-height:85vh;overflow-y:auto;}
+.modal h3{margin:0 0 14px;font-family:var(--disp);font-size:16px;}
+.modal-close{float:right;background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;}
+.kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px;}
+.kv span:first-child{color:var(--text-dim);}
+
+/* TA planner */
+.phase{border-left:3px solid var(--amber);padding-left:14px;margin-bottom:16px;}
+.phase.approval{border-color:var(--blue);}
+.phase.mfg{border-color:var(--amber);}
+.phase.final{border-color:var(--green);}
+.phase h4{margin:0 0 4px;font-family:var(--disp);font-size:14px;}
+.phase .range{color:var(--text-dim);font-size:11.5px;margin-bottom:8px;font-family:var(--mono);}
+.task-row{display:flex;gap:8px;align-items:center;margin-bottom:6px;background:var(--panel-2);padding:7px 10px;border-radius:6px;}
+.task-row input{flex:1;min-width:0;padding:6px 8px;font-size:12.5px;}
+.task-row .del{cursor:pointer;color:var(--text-dim);padding:0 4px;}
+
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px;}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;}
+.stat .n{font-family:var(--disp);font-size:24px;font-weight:700;}
+.stat .l{color:var(--text-dim);font-size:11.5px;text-transform:uppercase;letter-spacing:0.4px;margin-top:2px;}
+.empty{color:var(--text-dim);text-align:center;padding:40px;font-size:13px;}
+.setup-step{display:flex;gap:12px;margin-bottom:14px;}
+.setup-step .num{width:24px;height:24px;border-radius:50%;background:var(--panel-2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;}
+.badge-conn{color:var(--green);font-weight:600;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><span class="dot"></span>LinePlan</div>
+  <nav id="nav"></nav>
+  <div id="syncBadge" class="sync-badge sync-local"><span class="sync-dot"></span>Local only</div>
+</header>
+
+<main>
+  <div class="view active" id="view-orders"></div>
+  <div class="view" id="view-ta"></div>
+  <div class="view" id="view-jac"></div>
+  <div class="view" id="view-daily"></div>
+  <div class="view" id="view-reports"></div>
+  <div class="view" id="view-setup"></div>
+</main>
+
+<div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>
+
+<script>
+/* ============================= CONFIG & CONSTANTS ============================= */
+const BH_FACTORS = { Basic: 1, Medium: 2/3, Heavy: 1/2 };
+const MACHINES_PER_LINE = 20;
+const LINE_BASE_CAPACITY = 1200; // BH at full 20 machines
+const LINES_PER_FACTORY = 8;
+const FACTORY_NAMES = ['Factory 1','Factory 2'];
+const VIEW_DAYS = 90;
+
+let DB = {
+  orders: [],        // {id, orderNo, group, buyer, category, department, orderDate, deliveryDate, qty, rate, currency, orderValue, team, bhType, bhQty}
+  taPlans: {},        // orderId -> {phases:[{name,type,start,end,tasks:[{id,name,owner,start,end}]}]}
+  lines: [],          // {id, factory, lineNo, machinesOperated}
+  allocations: {},     // "lineId|dateStr" -> {planned, orderId}
+  achieved: {},        // "lineId|dateStr" -> achievedQty
+  settings: { clientId:'', shareLink:'', driveId:'', itemId:'' }
+};
+
+function uid(p){ return p+'_'+Math.random().toString(36).slice(2,9); }
+function fmtDate(d){ return d.toISOString().slice(0,10); }
+function parseDate(s){ return new Date(s+'T00:00:00'); }
+function addDays(d,n){ const r=new Date(d); r.setDate(r.getDate()+n); return r; }
+function isSunday(d){ return d.getDay()===0; }
+function fmtMoney(n,c){ return (c||'')+' '+Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2}); }
+function daysBetween(a,b){ return Math.round((parseDate(b)-parseDate(a))/86400000); }
+
+/* ============================= STORAGE (local + OneDrive Graph) ============================= */
+const Storage = {
+  mode: 'local',
+  msalInstance: null,
+  account: null,
+
+  initLocal(){
+    const raw = localStorage.getItem('lineplan_db');
+    if(raw){ try{ DB = JSON.parse(raw); ensureLines(); }catch(e){} }
+    ensureLines();
+  },
+  saveLocal(){ localStorage.setItem('lineplan_db', JSON.stringify(DB)); },
+
+  async saveAll(){
+    this.saveLocal();
+    if(this.mode==='onedrive'){ await this.pushToOneDrive(); }
+  },
+
+  encodeShareUrl(url){
+    const b64 = btoa(unescape(encodeURIComponent(url)))
+      .replace(/=+$/,'').replace(/\//g,'_').replace(/\+/g,'-');
+    return 'u!' + b64;
+  },
+
+  async getToken(){
+    const req = { scopes: ['Files.ReadWrite','User.Read'] };
+    try{
+      const res = await this.msalInstance.acquireTokenSilent({...req, account:this.account});
+      return res.accessToken;
+    }catch(e){
+      const res = await this.msalInstance.acquireTokenPopup(req);
+      return res.accessToken;
+    }
+  },
+
+  async connect(clientId, shareLink){
+    this.msalInstance = new msal.PublicClientApplication({
+      auth:{ clientId: clientId, authority:'https://login.microsoftonline.com/common', redirectUri: window.location.href.split('#')[0] }
+    });
+    await this.msalInstance.initialize();
+    const loginRes = await this.msalInstance.loginPopup({ scopes:['Files.ReadWrite','User.Read'] });
+    this.account = loginRes.account;
+    const token = await this.getToken();
+
+    // Resolve shared folder -> driveId + itemId
+    const shareId = this.encodeShareUrl(shareLink);
+    const shareRes = await fetch(`https://graph.microsoft.com/v1.0/shares/${shareId}/driveItem`, {
+      headers:{ Authorization:'Bearer '+token }
+    });
+    if(!shareRes.ok) throw new Error('Could not resolve shared folder link. Check the link and permissions.');
+    const item = await shareRes.json();
+    DB.settings.clientId = clientId;
+    DB.settings.shareLink = shareLink;
+    DB.settings.driveId = item.parentReference.driveId;
+    DB.settings.itemId = item.id;
+    this.mode = 'onedrive';
+    this.saveLocal();
+    await this.pullFromOneDrive();
+    await this.pushToOneDrive();
+  },
+
+  async pushToOneDrive(){
+    const token = await this.getToken();
+    const {driveId,itemId} = DB.settings;
+    await fetch(`https://graph.microsoft.com/v1.0/drives/${driveId}/items/${itemId}:/lineplan-data.json:/content`,{
+      method:'PUT',
+      headers:{ Authorization:'Bearer '+token, 'Content-Type':'application/json' },
+      body: JSON.stringify(DB)
+    });
+  },
+
+  async pullFromOneDrive(){
+    const token = await this.getToken();
+    const {driveId,itemId} = DB.settings;
+    const res = await fetch(`https://graph.microsoft.com/v1.0/drives/${driveId}/items/${itemId}:/lineplan-data.json:/content`,{
+      headers:{ Authorization:'Bearer '+token }
+    });
+    if(res.ok){
+      const remote = await res.json();
+      const localSettings = DB.settings;
+      DB = remote;
+      DB.settings = localSettings;
+      ensureLines();
+      this.saveLocal();
+    }
+  }
+};
+
+function ensureLines(){
+  if(DB.lines && DB.lines.length) return;
+  DB.lines = [];
+  FACTORY_NAMES.forEach((fname,fi)=>{
+    for(let i=1;i<=LINES_PER_FACTORY;i++){
+      DB.lines.push({ id: uid('line'), factory: fname, lineNo: i, machinesOperated: MACHINES_PER_LINE });
+    }
+  });
+}
+
+/* ============================= BUSINESS LOGIC ============================= */
+function calcBH(qty, bhType){ return Math.round(qty * BH_FACTORS[bhType] * 100)/100; }
+
+function generateTAPlan(order){
+  const lead = daysBetween(order.orderDate, order.deliveryDate);
+  if(lead <= 0) return null;
+  const approvalDays = Math.round(lead*0.45);
+  const mfgDays = Math.round(lead*0.50);
+  const finalDays = lead - approvalDays - mfgDays;
+
+  const start = parseDate(order.orderDate);
+  const approvalStart = start;
+  const approvalEnd = addDays(start, approvalDays-1);
+  const mfgStart = addDays(start, approvalDays);
+  const mfgEnd = addDays(start, approvalDays+mfgDays-1);
+  const finalStart = addDays(start, approvalDays+mfgDays);
+  const finalEnd = addDays(start, lead-1);
+
+  return {
+    orderId: order.id,
+    leadDays: lead,
+    phases: [
+      { key:'approval', name:'Approvals', type:'approval', start: fmtDate(approvalStart), end: fmtDate(approvalEnd),
+        tasks: defaultApprovalTasks(approvalStart, approvalEnd) },
+      { key:'mfg', name:'Garment Manufacturing', type:'mfg', start: fmtDate(mfgStart), end: fmtDate(mfgEnd),
+        tasks: defaultMfgTasks(mfgStart, mfgEnd) },
+      { key:'final', name:'Final Inspection & Dispatch', type:'final', start: fmtDate(finalStart), end: fmtDate(finalEnd),
+        tasks: defaultFinalTasks(finalStart, finalEnd) },
+    ]
+  };
+}
+
+function splitRange(start,end,n){
+  const total = daysBetween(fmtDate(start),fmtDate(end))+1;
+  const per = Math.max(1, Math.floor(total/n));
+  const out = [];
+  let cur = new Date(start);
+  for(let i=0;i<n;i++){
+    const s = new Date(cur);
+    let e = i===n-1 ? new Date(end) : addDays(s, per-1);
+    if(e > end) e = new Date(end);
+    out.push([s,e]);
+    cur = addDays(e,1);
+  }
+  return out;
+}
+function defaultApprovalTasks(s,e){
+  const names = ['Fabric Approval','Trim Approval','Fit Sample Approval','Size Set Approval','PP Sample Approval'];
+  const ranges = splitRange(s,e,names.length);
+  return names.map((n,i)=>({ id:uid('task'), name:n, owner:'', start:fmtDate(ranges[i][0]), end:fmtDate(ranges[i][1]) }));
+}
+function defaultMfgTasks(s,e){
+  const names = ['Cutting','Printing/Embroidery','Stitching','Washing','Finishing & Packing'];
+  const ranges = splitRange(s,e,names.length);
+  return names.map((n,i)=>({ id:uid('task'), name:n, owner:'', start:fmtDate(ranges[i][0]), end:fmtDate(ranges[i][1]) }));
+}
+function defaultFinalTasks(s,e){
+  const names = ['Final Inspection','Dispatch'];
+  const ranges = splitRange(s,e,names.length);
+  return names.map((n,i)=>({ id:uid('task'), name:n, owner:'', start:fmtDate(ranges[i][0]), end:fmtDate(ranges[i][1]) }));
+}
+
+function lineCapacity(line, dateStr){
+  if(isSunday(parseDate(dateStr))) return 0;
+  return Math.round(LINE_BASE_CAPACITY * (line.machinesOperated / MACHINES_PER_LINE));
+}
+function allocKey(lineId,dateStr){ return lineId+'|'+dateStr; }
+
+function bookedOnDay(lineId, dateStr, excludeOrderId){
+  const a = DB.allocations[allocKey(lineId,dateStr)];
+  if(!a) return 0;
+  if(excludeOrderId && a.orderId===excludeOrderId) return 0;
+  return a.planned||0;
+}
+
+// Auto-allot: spread an order's BH qty evenly across selected lines starting from a date,
+// filling each line's remaining daily capacity, skipping Sundays, never exceeding fixed capacity.
+function autoAllot(order, lineIds, startDateStr){
+  const remainingByLine = {}; lineIds.forEach(id=>remainingByLine[id]=0);
+  let toAllot = order.bhQty;
+  let d = parseDate(startDateStr);
+  const plan = []; // {lineId, date, qty}
+  let guard=0;
+  while(toAllot > 0.01 && guard < 400){
+    guard++;
+    const dateStr = fmtDate(d);
+    if(!isSunday(d)){
+      const perLineTarget = toAllot / lineIds.length;
+      for(const lineId of lineIds){
+        if(toAllot<=0.01) break;
+        const line = DB.lines.find(l=>l.id===lineId);
+        const cap = lineCapacity(line, dateStr);
+        const already = bookedOnDay(lineId, dateStr, order.id);
+        const free = Math.max(0, cap - already);
+        const give = Math.min(free, perLineTarget, toAllot);
+        if(give > 0.01){
+          plan.push({lineId, date:dateStr, qty: Math.round(give*100)/100});
+          toAllot -= give;
+        }
+      }
+    }
+    d = addDays(d,1);
+  }
+  // merge into allocations (adds to existing planned qty for that order/line/day if any)
+  plan.forEach(p=>{
+    const key = allocKey(p.lineId,p.date);
+    const existing = DB.allocations[key];
+    if(existing && existing.orderId===order.id){
+      existing.planned = Math.round((existing.planned+p.qty)*100)/100;
+    } else if(!existing){
+      DB.allocations[key] = { planned: p.qty, orderId: order.id };
+    } else {
+      // slot taken by another order on this line/day - shouldn't happen due to capacity check, but guard
+    }
+  });
+  return plan;
+}
+
+// Post achieved qty for a line/date. Variance rolls forward (shortfall) or pulls back from the
+// order's last planned day (surplus), only affecting that order's own remaining allocations.
+function postAchieved(lineId, dateStr, achievedQty){
+  const key = allocKey(lineId,dateStr);
+  const alloc = DB.allocations[key];
+  if(!alloc) return;
+  DB.achieved[key] = achievedQty;
+  const planned = alloc.planned;
+  const variance = planned - achievedQty; // positive = shortfall, negative = surplus
+
+  const orderId = alloc.orderId;
+  // gather this order's future allocation days on ANY line, sorted by date
+  const futureKeys = Object.keys(DB.allocations)
+    .filter(k=>{
+      const [lId,dStr] = k.split('|');
+      return DB.allocations[k].orderId===orderId && dStr > dateStr;
+    })
+    .sort((a,b)=> a.split('|')[1] < b.split('|')[1] ? -1 : 1);
+
+  if(variance > 0.01){
+    // shortfall: add difference to NEXT day's planned (same line, next working day) if exists,
+    // else to the next available day for this order on any line.
+    let nextKey = futureKeys.find(k=>k.split('|')[0]===lineId);
+    if(!nextKey) nextKey = futureKeys[0];
+    if(nextKey){
+      DB.allocations[nextKey].planned = Math.round((DB.allocations[nextKey].planned + variance)*100)/100;
+    }
+  } else if(variance < -0.01){
+    // surplus: reduce from the LAST planned day for this order (pull work forward, less remains)
+    const overage = -variance;
+    if(futureKeys.length){
+      const lastKey = futureKeys[futureKeys.length-1];
+      const a2 = DB.allocations[lastKey];
+      a2.planned = Math.max(0, Math.round((a2.planned - overage)*100)/100);
+      if(a2.planned===0) delete DB.allocations[lastKey];
+    }
+  }
+}
+
+/* ============================= UI: NAV ============================= */
+const TABS = [
+  {id:'orders', label:'Order Booking'},
+  {id:'ta', label:'TA Planner'},
+  {id:'jac', label:'Job Allocation'},
+  {id:'daily', label:'Daily Achieved'},
+  {id:'reports', label:'Reports'},
+  {id:'setup', label:'Setup / Sync'},
+];
+function renderNav(){
+  const nav = document.getElementById('nav');
+  nav.innerHTML = TABS.map(t=>`<button data-tab="${t.id}" class="${t.id===currentTab?'active':''}">${t.label}</button>`).join('');
+  nav.querySelectorAll('button').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+}
+let currentTab = 'orders';
+function switchTab(id){
+  currentTab = id;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  renderNav();
+  renderCurrent();
+}
+function renderCurrent(){
+  if(currentTab==='orders') renderOrders();
+  if(currentTab==='ta') renderTA();
+  if(currentTab==='jac') renderJAC();
+  if(currentTab==='daily') renderDaily();
+  if(currentTab==='reports') renderReports();
+  if(currentTab==='setup') renderSetup();
+}
+
+/* ============================= MODAL ============================= */
+function openModal(html){
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('modalBg').classList.add('show');
+}
+function closeModal(){ document.getElementById('modalBg').classList.remove('show'); }
+document.getElementById('modalBg').addEventListener('click',e=>{ if(e.target.id==='modalBg') closeModal(); });
+
+/* ============================= VIEW: ORDERS ============================= */
+function renderOrders(){
+  const v = document.getElementById('view-orders');
+  v.innerHTML = `
+    <h1>Order Booking</h1>
+    <div class="sub">Enter a new order. Order quantity is converted to BH (Basic Hour equivalent) using the garment complexity factor.</div>
+    <div class="panel">
+      <div class="row">
+        <div class="field"><label>Order Number</label><input id="f_orderNo"></div>
+        <div class="field"><label>Group Name</label><input id="f_group"></div>
+        <div class="field"><label>Buyer</label><input id="f_buyer"></div>
+        <div class="field"><label>Category</label><input id="f_category" placeholder="e.g. Knit Tee"></div>
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <div class="field"><label>Department</label><input id="f_department"></div>
+        <div class="field"><label>Team Name</label><input id="f_team"></div>
+        <div class="field"><label>Order Date</label><input type="date" id="f_orderDate"></div>
+        <div class="field"><label>Delivery Date</label><input type="date" id="f_deliveryDate"></div>
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <div class="field"><label>Quantity</label><input type="number" id="f_qty" min="1"></div>
+        <div class="field"><label>BH Type</label>
+          <select id="f_bhType"><option value="Basic">Basic (×1)</option><option value="Medium">Medium (×2/3)</option><option value="Heavy">Heavy (×1/2)</option></select>
+        </div>
+        <div class="field"><label>Rate</label><input type="number" id="f_rate" step="0.01"></div>
+        <div class="field"><label>Currency</label><input id="f_currency" value="USD" style="max-width:90px;"></div>
+        <div class="field"><label>Order Value (auto)</label><input id="f_orderValue" disabled></div>
+      </div>
+      <div class="row" style="margin-top:14px;align-items:center;">
+        <div class="field" style="flex:none;"><label>BH Quantity (auto)</label><input id="f_bhQty" disabled style="max-width:140px;"></div>
+        <div style="flex:1;"></div>
+        <button class="btn" id="btnAddOrder">Book Order & Generate TA Plan</button>
+      </div>
+    </div>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Order No</th><th>Buyer</th><th>Category</th><th>Team</th><th>Qty</th><th>BH Type</th><th>BH Qty</th><th>Order Date</th><th>Delivery</th><th>Value</th><th></th></tr></thead>
+        <tbody id="ordersBody"></tbody>
+      </table>
+      <div id="ordersEmpty" class="empty" style="display:none;">No orders booked yet.</div>
+    </div>
+  `;
+  function recalc(){
+    const qty = parseFloat(document.getElementById('f_qty').value)||0;
+    const type = document.getElementById('f_bhType').value;
+    const rate = parseFloat(document.getElementById('f_rate').value)||0;
+    document.getElementById('f_bhQty').value = calcBH(qty,type);
+    document.getElementById('f_orderValue').value = Math.round(qty*rate*100)/100;
+  }
+  ['f_qty','f_bhType','f_rate'].forEach(id=>document.getElementById(id).addEventListener('input',recalc));
+
+  document.getElementById('btnAddOrder').onclick = ()=>{
+    const g = id=>document.getElementById(id).value;
+    const order = {
+      id: uid('ord'),
+      orderNo: g('f_orderNo'), group: g('f_group'), buyer: g('f_buyer'), category: g('f_category'),
+      department: g('f_department'), team: g('f_team'),
+      orderDate: g('f_orderDate'), deliveryDate: g('f_deliveryDate'),
+      qty: parseFloat(g('f_qty'))||0, bhType: g('f_bhType'),
+      rate: parseFloat(g('f_rate'))||0, currency: g('f_currency')||'USD',
+    };
+    if(!order.orderNo || !order.orderDate || !order.deliveryDate || !order.qty){
+      alert('Please fill Order Number, Order Date, Delivery Date and Quantity.'); return;
+    }
+    if(parseDate(order.deliveryDate) <= parseDate(order.orderDate)){
+      alert('Delivery Date must be after Order Date.'); return;
+    }
+    order.bhQty = calcBH(order.qty, order.bhType);
+    order.orderValue = Math.round(order.qty*order.rate*100)/100;
+    DB.orders.push(order);
+    const ta = generateTAPlan(order);
+    if(ta) DB.taPlans[order.id] = ta;
+    Storage.saveAll();
+    renderOrders();
+  };
+
+  const tbody = document.getElementById('ordersBody');
+  if(DB.orders.length===0){ document.getElementById('ordersEmpty').style.display='block'; }
+  tbody.innerHTML = DB.orders.map(o=>`
+    <tr>
+      <td class="mono">${o.orderNo}</td><td>${o.buyer||'—'}</td><td>${o.category||'—'}</td><td>${o.team||'—'}</td>
+      <td class="mono">${o.qty}</td>
+      <td><span class="tag tag-${o.bhType.toLowerCase()}">${o.bhType}</span></td>
+      <td class="mono">${o.bhQty}</td>
+      <td class="mono">${o.orderDate}</td><td class="mono">${o.deliveryDate}</td>
+      <td class="mono">${fmtMoney(o.orderValue,o.currency)}</td>
+      <td><span class="link" onclick="openOrderDetail('${o.id}')">View</span></td>
+    </tr>
+  `).join('');
+}
+function openOrderDetail(orderId){
+  const o = DB.orders.find(x=>x.id===orderId);
+  openModal(`
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <h3>${o.orderNo}</h3>
+    <div class="kv"><span>Group</span><span>${o.group||'—'}</span></div>
+    <div class="kv"><span>Buyer</span><span>${o.buyer||'—'}</span></div>
+    <div class="kv"><span>Category</span><span>${o.category||'—'}</span></div>
+    <div class="kv"><span>Department</span><span>${o.department||'—'}</span></div>
+    <div class="kv"><span>Team</span><span>${o.team||'—'}</span></div>
+    <div class="kv"><span>Order / Delivery</span><span>${o.orderDate} → ${o.deliveryDate}</span></div>
+    <div class="kv"><span>Quantity</span><span>${o.qty}</span></div>
+    <div class="kv"><span>BH Type / Factor</span><span>${o.bhType} (×${BH_FACTORS[o.bhType].toFixed(3)})</span></div>
+    <div class="kv"><span>BH Quantity</span><span>${o.bhQty}</span></div>
+    <div class="kv"><span>Rate / Value</span><span>${o.rate} → ${fmtMoney(o.orderValue,o.currency)}</span></div>
+    <div style="margin-top:16px;display:flex;gap:8px;">
+      <button class="btn secondary" onclick="closeModal();switchTab('ta');selectTAOrder('${o.id}')">Open TA Plan</button>
+      <button class="btn secondary" onclick="closeModal();switchTab('jac');pendingAllotOrder='${o.id}';renderJAC()">Allot to Lines</button>
+    </div>
+  `);
+}
+
+/* ============================= VIEW: TA PLANNER ============================= */
+let selectedTAOrderId = null;
+function selectTAOrder(id){ selectedTAOrderId = id; renderTA(); }
+function renderTA(){
+  const v = document.getElementById('view-ta');
+  const opts = DB.orders.map(o=>`<option value="${o.id}" ${o.id===selectedTAOrderId?'selected':''}>${o.orderNo} — ${o.buyer||''}</option>`).join('');
+  v.innerHTML = `
+    <h1>TA Planner</h1>
+    <div class="sub">Lead time splits automatically: 45% Approvals · 50% Garment Manufacturing · 5% Final Inspection &amp; Dispatch. Add/edit tasks and owners within each phase window.</div>
+    <div class="panel"><div class="field"><label>Select Order</label><select id="taOrderSelect"><option value="">— choose an order —</option>${opts}</select></div></div>
+    <div id="taBody"></div>
+  `;
+  document.getElementById('taOrderSelect').onchange = e=>{ selectedTAOrderId = e.target.value; renderTA(); };
+  if(!selectedTAOrderId || !DB.taPlans[selectedTAOrderId]) return;
+  const order = DB.orders.find(o=>o.id===selectedTAOrderId);
+  const plan = DB.taPlans[selectedTAOrderId];
+  const body = document.getElementById('taBody');
+  body.innerHTML = `
+    <div class="stat-grid">
+      <div class="stat"><div class="n">${plan.leadDays}</div><div class="l">Total Lead Days</div></div>
+      <div class="stat"><div class="n">${plan.phases[0].tasks.length ? daysBetween(plan.phases[0].start,plan.phases[0].end)+1 : 0}</div><div class="l">Approval Days (45%)</div></div>
+      <div class="stat"><div class="n">${daysBetween(plan.phases[1].start,plan.phases[1].end)+1}</div><div class="l">Manufacturing Days (50%)</div></div>
+      <div class="stat"><div class="n">${daysBetween(plan.phases[2].start,plan.phases[2].end)+1}</div><div class="l">Final &amp; Dispatch Days (5%)</div></div>
+    </div>
+    ${plan.phases.map(ph=>renderPhase(order,plan,ph)).join('')}
+  `;
+}
+function renderPhase(order,plan,ph){
+  return `
+  <div class="panel phase ${ph.type}">
+    <h4>${ph.name}</h4>
+    <div class="range">${ph.start} → ${ph.end}</div>
+    <div id="tasks_${ph.key}">
+      ${ph.tasks.map(t=>taskRow(order.id,ph.key,t)).join('')}
+    </div>
+    <button class="btn ghost" style="margin-top:6px;" onclick="addTask('${order.id}','${ph.key}')">+ Add Task</button>
+  </div>`;
+}
+function taskRow(orderId,phaseKey,t){
+  return `
+  <div class="task-row" data-task="${t.id}">
+    <input value="${t.name}" onchange="updateTask('${orderId}','${phaseKey}','${t.id}','name',this.value)" placeholder="Task name">
+    <input value="${t.owner}" onchange="updateTask('${orderId}','${phaseKey}','${t.id}','owner',this.value)" placeholder="Owner" style="max-width:130px;">
+    <input type="date" value="${t.start}" onchange="updateTask('${orderId}','${phaseKey}','${t.id}','start',this.value)" style="max-width:150px;">
+    <input type="date" value="${t.end}" onchange="updateTask('${orderId}','${phaseKey}','${t.id}','end',this.value)" style="max-width:150px;">
+    <span class="del" onclick="delTask('${orderId}','${phaseKey}','${t.id}')">✕</span>
+  </div>`;
+}
+function addTask(orderId,phaseKey){
+  const plan = DB.taPlans[orderId];
+  const ph = plan.phases.find(p=>p.key===phaseKey);
+  ph.tasks.push({ id: uid('task'), name:'New Task', owner:'', start: ph.start, end: ph.end });
+  Storage.saveAll(); renderTA();
+}
+function delTask(orderId,phaseKey,taskId){
+  const plan = DB.taPlans[orderId];
+  const ph = plan.phases.find(p=>p.key===phaseKey);
+  ph.tasks = ph.tasks.filter(t=>t.id!==taskId);
+  Storage.saveAll(); renderTA();
+}
+function updateTask(orderId,phaseKey,taskId,field,value){
+  const plan = DB.taPlans[orderId];
+  const ph = plan.phases.find(p=>p.key===phaseKey);
+  const t = ph.tasks.find(t=>t.id===taskId);
+  if((field==='start'||field==='end')){
+    if(value < ph.start || value > ph.end){
+      alert(`Task dates must stay within the ${ph.name} window (${ph.start} to ${ph.end}).`);
+      renderTA(); return;
+    }
+  }
+  t[field] = value;
+  Storage.saveAll();
+}
+
+/* ============================= VIEW: JOB ALLOCATION CHART ============================= */
+let pendingAllotOrder = null;
+function renderJAC(){
+  const v = document.getElementById('view-jac');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const start = addDays(today,-1);
+  const days = []; for(let i=0;i<VIEW_DAYS;i++) days.push(addDays(start,i));
+
+  const orderOpts = DB.orders.map(o=>`<option value="${o.id}" ${o.id===pendingAllotOrder?'selected':''}>${o.orderNo} (BH ${o.bhQty})</option>`).join('');
+
+  v.innerHTML = `
+    <h1>Job Allocation Chart</h1>
+    <div class="sub">2 factories × 8 lines · fixed capacity 1200 BH/line/day at 20 machines · Sundays are holidays · rolling 90-day view (from yesterday).</div>
+    <div class="panel">
+      <div class="row" style="align-items:flex-end;">
+        <div class="field"><label>Order to allot</label><select id="allotOrder">${orderOpts}</select></div>
+        <div class="field"><label>Start date</label><input type="date" id="allotStart" value="${fmtDate(today)}"></div>
+        <div class="field"><label>Lines (auto-select factory)</label>
+          <select id="allotFactory"><option value="">All lines</option>${FACTORY_NAMES.map(f=>`<option value="${f}">${f} only</option>`).join('')}</select>
+        </div>
+        <button class="btn" id="btnAutoAllot">Auto-Allot Evenly</button>
+      </div>
+    </div>
+    <div class="jac-wrap"><table class="jac">
+      <thead><tr>
+        <th class="corner">Line</th>
+        ${days.map(d=>`<th class="dayhead ${isSunday(d)?'holiday':''} ${fmtDate(d)===fmtDate(today)?'today':''}">${d.getDate()}/${d.getMonth()+1}<br>${['Su','Mo','Tu','We','Th','Fr','Sa'][d.getDay()]}</th>`).join('')}
+      </tr></thead>
+      <tbody>
+        ${FACTORY_NAMES.map(fname=>DB.lines.filter(l=>l.factory===fname).map((line,idx)=>`
+          <tr class="${idx===0?'factory-sep':''}">
+            <th class="linehead">${fname} · Line ${line.lineNo}<div style="color:var(--text-dim);font-weight:400;font-size:10.5px;">${line.machinesOperated}/${MACHINES_PER_LINE} machines</div></th>
+            ${days.map(d=>jacCell(line,d)).join('')}
+          </tr>
+        `).join('')).join('')}
+      </tbody>
+    </table></div>
+  `;
+  document.getElementById('btnAutoAllot').onclick = ()=>{
+    const orderId = document.getElementById('allotOrder').value;
+    const startD = document.getElementById('allotStart').value;
+    const fac = document.getElementById('allotFactory').value;
+    if(!orderId){ alert('Choose an order first.'); return; }
+    const order = DB.orders.find(o=>o.id===orderId);
+    const lineIds = DB.lines.filter(l=>!fac || l.factory===fac).map(l=>l.id);
+    const already = Object.values(DB.allocations).filter(a=>a.orderId===orderId).reduce((s,a)=>s+a.planned,0);
+    const remaining = order.bhQty - already;
+    if(remaining<=0){ alert('This order is already fully allotted.'); return; }
+    autoAllot({...order, bhQty: remaining}, lineIds, startD);
+    Storage.saveAll();
+    renderJAC();
+  };
+}
+function jacCell(line,d){
+  const dateStr = fmtDate(d);
+  const holiday = isSunday(d);
+  const key = allocKey(line.id,dateStr);
+  const alloc = DB.allocations[key];
+  const cap = lineCapacity(line,dateStr);
+  const planned = alloc ? alloc.planned : 0;
+  const achieved = DB.achieved[key];
+  let cls = 'util-0';
+  if(!holiday && cap>0){
+    const pct = planned/cap;
+    if(planned>cap+0.5) cls='util-over';
+    else if(pct>0.95) cls='util-full';
+    else if(pct>0.4) cls='util-mid';
+    else if(pct>0) cls='util-low';
+  }
+  return `<td class="cell ${holiday?'holiday':''} ${cls}" onclick="openCellDetail('${line.id}','${dateStr}')">
+    ${holiday?'<span style="color:var(--text-dim);">H</span>':''}
+    ${!holiday && planned ? `<div class="planned">${planned}</div>` : ''}
+    ${!holiday && achieved!==undefined ? `<div class="achieved">✓${achieved}</div>` : ''}
+  </td>`;
+}
+function openCellDetail(lineId,dateStr){
+  const line = DB.lines.find(l=>l.id===lineId);
+  const key = allocKey(lineId,dateStr);
+  const alloc = DB.allocations[key];
+  const cap = lineCapacity(line,dateStr);
+  const order = alloc ? DB.orders.find(o=>o.id===alloc.orderId) : null;
+  const achieved = DB.achieved[key];
+  openModal(`
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <h3>${line.factory} · Line ${line.lineNo}</h3>
+    <div class="kv"><span>Date</span><span>${dateStr}${isSunday(parseDate(dateStr))?' (Holiday)':''}</span></div>
+    <div class="kv"><span>Line Capacity</span><span>${cap} BH</span></div>
+    <div class="kv"><span>Order</span><span>${order?order.orderNo:'— unbooked —'}</span></div>
+    <div class="kv"><span>Planned</span><span>${alloc?alloc.planned:0} BH</span></div>
+    <div class="kv"><span>Achieved</span><span>${achieved!==undefined?achieved+' BH':'not posted'}</span></div>
+    <div class="kv"><span>Variance</span><span>${alloc && achieved!==undefined ? (alloc.planned-achieved) : '—'}</span></div>
+  `);
+}
+
+/* ============================= VIEW: DAILY ACHIEVED ENTRY ============================= */
+function renderDaily(){
+  const v = document.getElementById('view-daily');
+  const today = fmtDate(new Date());
+  v.innerHTML = `
+    <h1>Daily Achieved Entry</h1>
+    <div class="sub">Post today's actual output per line. Shortfall automatically rolls forward to the next planned day; surplus is deducted from the order's last planned day.</div>
+    <div class="panel">
+      <div class="field" style="max-width:200px;"><label>Date</label><input type="date" id="dailyDate" value="${today}"></div>
+    </div>
+    <div class="panel"><table>
+      <thead><tr><th>Factory</th><th>Line</th><th>Order</th><th>Planned (BH)</th><th>Achieved (BH)</th><th></th></tr></thead>
+      <tbody id="dailyBody"></tbody>
+    </table></div>
+  `;
+  document.getElementById('dailyDate').onchange = renderDailyBody;
+  renderDailyBody();
+}
+function renderDailyBody(){
+  const dateStr = document.getElementById('dailyDate').value;
+  const tbody = document.getElementById('dailyBody');
+  const rows = DB.lines.map(line=>{
+    const key = allocKey(line.id,dateStr);
+    const alloc = DB.allocations[key];
+    const order = alloc ? DB.orders.find(o=>o.id===alloc.orderId) : null;
+    const achieved = DB.achieved[key];
+    if(!alloc) return '';
+    return `<tr>
+      <td>${line.factory}</td><td>Line ${line.lineNo}</td><td class="mono">${order?order.orderNo:'—'}</td>
+      <td class="mono">${alloc.planned}</td>
+      <td><input type="number" style="max-width:110px;" id="ach_${line.id}" value="${achieved!==undefined?achieved:''}"></td>
+      <td><button class="btn secondary" onclick="submitAchieved('${line.id}','${dateStr}')">Post</button></td>
+    </tr>`;
+  }).join('');
+  tbody.innerHTML = rows || `<tr><td colspan="6" class="empty">No allocations planned for this date.</td></tr>`;
+}
+function submitAchieved(lineId,dateStr){
+  const val = parseFloat(document.getElementById('ach_'+lineId).value);
+  if(isNaN(val)){ alert('Enter a valid achieved quantity.'); return; }
+  postAchieved(lineId,dateStr,val);
+  Storage.saveAll();
+  renderDailyBody();
+}
+
+/* ============================= VIEW: REPORTS ============================= */
+function renderReports(){
+  const v = document.getElementById('view-reports');
+  const totalOrders = DB.orders.length;
+  const totalBH = DB.orders.reduce((s,o)=>s+o.bhQty,0);
+  const totalAllotted = Object.values(DB.allocations).reduce((s,a)=>s+a.planned,0);
+  const totalAchieved = Object.values(DB.achieved).reduce((s,a)=>s+a,0);
+  const todayStr = fmtDate(new Date());
+  const overdue = DB.orders.filter(o=>o.deliveryDate < todayStr).length;
+
+  const lineUtil = DB.lines.map(line=>{
+    const keys = Object.keys(DB.allocations).filter(k=>k.startsWith(line.id+'|'));
+    const planned = keys.reduce((s,k)=>s+DB.allocations[k].planned,0);
+    const achieved = keys.reduce((s,k)=>s+(DB.achieved[k]||0),0);
+    return {line, planned, achieved};
+  });
+
+  v.innerHTML = `
+    <h1>Reports</h1>
+    <div class="sub">Snapshot across all booked orders, TA plans, and line output.</div>
+    <div class="stat-grid">
+      <div class="stat"><div class="n">${totalOrders}</div><div class="l">Orders Booked</div></div>
+      <div class="stat"><div class="n">${totalBH.toFixed(0)}</div><div class="l">Total BH Ordered</div></div>
+      <div class="stat"><div class="n">${totalAllotted.toFixed(0)}</div><div class="l">Total BH Allotted</div></div>
+      <div class="stat"><div class="n">${totalAchieved.toFixed(0)}</div><div class="l">Total BH Achieved</div></div>
+      <div class="stat"><div class="n" style="color:${overdue?'var(--red)':'var(--green)'};">${overdue}</div><div class="l">Orders Past Delivery Date</div></div>
+    </div>
+    <div class="panel">
+      <h4 style="margin-top:0;">Line Output Summary</h4>
+      <table>
+        <thead><tr><th>Factory</th><th>Line</th><th>Planned (BH)</th><th>Achieved (BH)</th><th>Variance</th></tr></thead>
+        <tbody>
+          ${lineUtil.map(r=>`<tr><td>${r.line.factory}</td><td>Line ${r.line.lineNo}</td>
+            <td class="mono">${r.planned.toFixed(0)}</td><td class="mono">${r.achieved.toFixed(0)}</td>
+            <td class="mono" style="color:${r.planned-r.achieved>0?'var(--amber)':'var(--green)'}">${(r.planned-r.achieved).toFixed(0)}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <h4 style="margin-top:0;">Order Status</h4>
+      <table>
+        <thead><tr><th>Order</th><th>Buyer</th><th>Delivery</th><th>BH Qty</th><th>Allotted</th><th>Achieved</th><th>Status</th></tr></thead>
+        <tbody>
+          ${DB.orders.map(o=>{
+            const keys = Object.keys(DB.allocations).filter(k=>DB.allocations[k].orderId===o.id);
+            const allotted = keys.reduce((s,k)=>s+DB.allocations[k].planned,0);
+            const achieved = keys.reduce((s,k)=>s+(DB.achieved[k]||0),0);
+            const late = o.deliveryDate < todayStr && achieved < o.bhQty;
+            return `<tr><td class="mono">${o.orderNo}</td><td>${o.buyer||'—'}</td><td class="mono">${o.deliveryDate}</td>
+              <td class="mono">${o.bhQty}</td><td class="mono">${allotted.toFixed(0)}</td><td class="mono">${achieved.toFixed(0)}</td>
+              <td><span class="pill" style="${late?'color:var(--red)':''}">${late?'Overdue':(achieved>=o.bhQty?'Complete':'In Progress')}</span></td></tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* ============================= VIEW: SETUP / SYNC ============================= */
+function renderSetup(){
+  const v = document.getElementById('view-setup');
+  const connected = Storage.mode==='onedrive';
+  v.innerHTML = `
+    <h1>Setup / Sync</h1>
+    <div class="sub">Connect this planner to a shared OneDrive folder so your whole team reads and writes the same data.</div>
+    <div class="panel">
+      <div class="setup-step"><div class="num">1</div><div>In OneDrive, create a folder (e.g. <b>LinePlan Data</b>), then <b>Share</b> it with your team with <b>Edit</b> access. Copy the share link.</div></div>
+      <div class="setup-step"><div class="num">2</div><div>Register a free Azure AD app once (Azure Portal → App registrations → New registration → Single-page application, redirect URI = this page's URL). No admin approval is needed for the <span class="mono">Files.ReadWrite</span> and <span class="mono">User.Read</span> delegated permissions used here.</div></div>
+      <div class="setup-step"><div class="num">3</div><div>Paste the Application (client) ID and the shared folder link below, then connect. Each teammate opens this same page and connects with their own Microsoft login — the JSON data file inside the shared folder becomes the common backend.</div></div>
+    </div>
+    <div class="panel">
+      <div class="row">
+        <div class="field"><label>Azure App Client ID</label><input id="s_clientId" value="${DB.settings.clientId||''}" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"></div>
+        <div class="field"><label>Shared OneDrive Folder Link</label><input id="s_shareLink" value="${DB.settings.shareLink||''}" placeholder="https://onedrive.live.com/... or https://yourtenant-my.sharepoint.com/..."></div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px;align-items:center;">
+        <button class="btn" id="btnConnect">${connected?'Reconnect':'Connect to OneDrive'}</button>
+        ${connected?'<span class="badge-conn">● Connected — data syncs to shared folder</span>':''}
+      </div>
+    </div>
+    <div class="panel">
+      <h4 style="margin-top:0;">Data</h4>
+      <div class="row">
+        <button class="btn secondary" onclick="Storage.pullFromOneDrive().then(()=>{alert('Pulled latest from OneDrive.');renderCurrent();})" ${connected?'':'disabled'}>Pull latest from OneDrive</button>
+        <button class="btn secondary" onclick="Storage.pushToOneDrive().then(()=>alert('Pushed to OneDrive.'))" ${connected?'':'disabled'}>Push now</button>
+        <button class="btn ghost" onclick="exportJSON()">Export JSON backup</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('btnConnect').onclick = async ()=>{
+    const clientId = document.getElementById('s_clientId').value.trim();
+    const shareLink = document.getElementById('s_shareLink').value.trim();
+    if(!clientId || !shareLink){ alert('Enter both the Client ID and the shared folder link.'); return; }
+    try{
+      await Storage.connect(clientId, shareLink);
+      updateSyncBadge();
+      renderSetup();
+      renderCurrent();
+    }catch(e){
+      alert('Connection failed: '+e.message);
+    }
+  };
+}
+function exportJSON(){
+  const blob = new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'lineplan-backup.json'; a.click();
+}
+function updateSyncBadge(){
+  const b = document.getElementById('syncBadge');
+  if(Storage.mode==='onedrive'){
+    b.className='sync-badge sync-online'; b.innerHTML='<span class="sync-dot"></span>Synced · OneDrive';
+  } else {
+    b.className='sync-badge sync-local'; b.innerHTML='<span class="sync-dot"></span>Local only';
+  }
+}
+
+/* ============================= INIT ============================= */
+Storage.initLocal();
+renderNav();
+renderCurrent();
+updateSyncBadge();
+</script>
+</body>
+</html>

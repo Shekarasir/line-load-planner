@@ -1,0 +1,5 @@
+# Change the host name if you use a different sub-domain.
+tna.lakkifashions.com {
+	encode gzip
+	reverse_proxy app:3001
+}

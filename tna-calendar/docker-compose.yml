@@ -1,0 +1,32 @@
+# Production stack for tna.lakkifashions.com
+#   1. Point a DNS A record for tna.lakkifashions.com at this server's public IP.
+#   2. docker compose up -d --build
+# Caddy obtains and renews the HTTPS certificate automatically.
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      - DB_PATH=/data/tna.db
+    volumes:
+      - tna-data:/data
+    expose:
+      - "3001"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  tna-data:
+  caddy-data:
+  caddy-config:

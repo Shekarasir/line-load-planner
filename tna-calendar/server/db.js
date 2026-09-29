@@ -57,6 +57,21 @@ CREATE TABLE IF NOT EXISTS subtasks (
   actual_date    TEXT
 );
 
+CREATE TABLE IF NOT EXISTS accounts (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  username       TEXT NOT NULL UNIQUE,
+  display_name   TEXT NOT NULL DEFAULT '',
+  password_hash  TEXT NOT NULL,
+  role           TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin','user')),
+  created_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  token_hash  TEXT PRIMARY KEY,
+  account_id  INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  expires_at  TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_tasks_order ON tasks(order_id);
 CREATE INDEX IF NOT EXISTS idx_subtasks_task ON subtasks(task_id);
 `;

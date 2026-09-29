@@ -27,6 +27,23 @@ npm test          # date-calculation, validation and API tests
 
 The database file is created at `./data/tna.db` (override with `DB_PATH`).
 
+## Logins
+
+Everyone signs in with a username and password. Sessions last 30 days, and 8 wrong attempts
+lock that username for 15 minutes.
+
+- **First admin:** on first start (no logins yet) the server creates an admin login.
+  Set `ADMIN_USERNAME` (default `admin`) and `ADMIN_PASSWORD` (min 8 characters) as
+  environment variables before the first start. If `ADMIN_PASSWORD` isn't set, a random password
+  is generated and printed once in the server log.
+- **Admins** (account menu → *Manage logins*) add logins, reset passwords and choose each
+  login's role: *Admin* or *User*. Users can do everything except manage logins.
+- **Everyone** can change their own password from the account menu (top-right).
+- Forgotten password: an admin resets it; that person is signed out on all devices.
+
+Logins are separate from the User Master: the User Master is the list of task owners
+shown on the T&A, while logins are the people who can open the app.
+
 ## Screens
 
 - **Dashboard** (`/`) — summary tiles (active / delayed orders, overdue tasks, due in 7 days),
@@ -99,6 +116,11 @@ test/                  node:test unit + API tests
 | GET/PUT/DELETE | `/api/orders/:id` | full T&A / replace / delete |
 | PATCH | `/api/tasks/:id`, `/api/subtasks/:id` | quick `{ status, actual_date }` update |
 | GET | `/api/open-items` | all open tasks and sub-tasks, soonest due first |
+| POST | `/api/auth/login`, `/api/auth/logout`, `/api/auth/password` | sign in / out / change own password |
+| GET | `/api/auth/me` | current login |
+| GET/POST/PUT/DELETE | `/api/accounts[/:id]` | manage logins (admin only) |
+
+All endpoints except `/api/health` and `/api/auth/login` require a signed-in session.
 
 ## Deployment to `tna.lakkifashions.com`
 
@@ -106,17 +128,30 @@ The app is a single Node process (API + built client) with a SQLite file, so it 
 with a persistent disk — a small VPS or any Docker host.
 
 1. Create a DNS **A record** `tna.lakkifashions.com → <server public IP>`.
-2. On the server, copy this folder and run:
+2. On the server, clone this repository and run:
    ```bash
    docker compose up -d --build
    ```
    Caddy serves the site on ports 80/443 and obtains the HTTPS certificate automatically.
    To use another domain, edit `deploy/Caddyfile`.
+   Put `ADMIN_PASSWORD=<a strong password>` in a `.env` file next to `docker-compose.yml`
+   first so you know the admin password (otherwise read it from `docker compose logs app`).
 3. Data lives in the `tna-data` Docker volume. Back it up with e.g.
    ```bash
    docker compose exec app node -e "new (require('node:sqlite').DatabaseSync)('/data/tna.db').exec(\"VACUUM INTO '/data/backup.db'\")"
    docker compose cp app:/data/backup.db ./tna-backup-$(date +%F).db
    ```
+
+### Option: Render (no server to manage)
+
+1. render.com → **New → Web Service** → pick this GitHub repository (runtime: Docker, branch `main`).
+2. Instance type **Starter** (the free plan has no persistent disk).
+3. **Advanced → Add Disk**: mount path `/data`, 1 GB.
+4. **Environment**: add `ADMIN_PASSWORD` = a strong password (and optionally `ADMIN_USERNAME`).
+5. Create the service. Then **Settings → Custom Domains** → add `tna.lakkifashions.com` and create
+   the CNAME record Render shows at your DNS provider. HTTPS is automatic.
+
+Every push to `main` redeploys; data on the disk is kept.
 
 Without Docker: `npm ci && npm run build && npm start` (serves on `PORT`, default 3001) behind
 any reverse proxy (nginx, IIS, Caddy) that forwards the domain to that port.
@@ -124,6 +159,3 @@ any reverse proxy (nginx, IIS, Caddy) that forwards the domain to that port.
 > Serverless hosts such as Vercel/Netlify have no persistent disk, so SQLite data would be
 > lost between deployments. Use the Docker route above, or swap `server/db.js` for a hosted
 > PostgreSQL database before deploying there.
-
-There is no login in this version — run it on the company network/VPN or put the domain behind
-an access proxy (e.g. Cloudflare Access) if it is exposed to the internet.

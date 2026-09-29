@@ -16,11 +16,28 @@ async function request(method, url, body) {
   });
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));
+  // Session expired or signed out elsewhere: tell the app to show the login screen.
+  if (res.status === 401 && url !== '/auth/login' && url !== '/auth/me') {
+    window.dispatchEvent(new Event('tna:unauthorized'));
+  }
   if (!res.ok) throw new ApiError(data.error || `Request failed (${res.status})`, res.status, data.details);
   return data;
 }
 
 export const api = {
+  auth: {
+    me: () => request('GET', '/auth/me'),
+    login: (username, password) => request('POST', '/auth/login', { username, password }),
+    logout: () => request('POST', '/auth/logout'),
+    changePassword: (current_password, new_password) =>
+      request('POST', '/auth/password', { current_password, new_password }),
+  },
+  accounts: {
+    list: () => request('GET', '/accounts'),
+    create: (account) => request('POST', '/accounts', account),
+    update: (id, account) => request('PUT', `/accounts/${id}`, account),
+    remove: (id) => request('DELETE', `/accounts/${id}`),
+  },
   users: {
     list: (status) => request('GET', `/users${status ? `?status=${encodeURIComponent(status)}` : ''}`),
     create: (user) => request('POST', '/users', user),

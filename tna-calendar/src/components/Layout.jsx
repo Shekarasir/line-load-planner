@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { CalendarRange, LayoutDashboard, PlusCircle, Users } from 'lucide-react';
 import { COMPANY_NAME } from '../../shared/tna.js';
+import AccountMenu from './AccountMenu.jsx';
 
 const NAV = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -35,6 +36,9 @@ export default function Layout() {
               </NavLink>
             ))}
           </nav>
+          <div className="ml-auto md:ml-2">
+            <AccountMenu />
+          </div>
         </div>
       </header>
 

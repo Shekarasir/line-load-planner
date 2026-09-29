@@ -128,6 +128,23 @@ All endpoints except `/api/health`, `/api/auth/login`, `/api/auth/status` and fi
 The PHP version exposes the same endpoints as `api.php?r=/path` (e.g. `api.php?r=/orders/5`);
 PUT/PATCH/DELETE may be sent as `POST …&_method=PUT` for hosts that block those methods.
 
+## Live setup: lakkifashions.in (GoDaddy cPanel hosting)
+
+| Address | Folder in cPanel | Package |
+|---|---|---|
+| `https://lakkifashions.in` | `public_html` | start page (`portal/`) linking to all apps |
+| `https://tna.lakkifashions.in` | subdomain folder | T&A Calendar (`release/tna-upload.zip`) |
+| `https://lineload.lakkifashions.in` | subdomain folder | Line Load Planner (`lineload/`) |
+
+**Installing or updating any of them without uploading files:** in cPanel File Manager, create
+`install.php` in the site's folder with the contents of [`release/install.php`](release/install.php),
+then open `https://<site>/install.php?app=tna` (or `?app=portal`, `?app=lineload`). It downloads the
+latest package from this repository, unpacks it and deletes itself. T&A data lives in
+`/home/<user>/tna-data/` and is never touched by installs or updates.
+
+**Publishing a new version:** `npm run build:php`, zip `dist-php/` into `release/tna-upload.zip`
+(and `portal/`, `lineload/` into their zips), commit and push to `main`, then run the installer.
+
 ## Install on the existing website (PHP hosting: CWP / cPanel) — recommended
 
 The same app also ships as a **PHP version** that runs on ordinary web hosting, next to the

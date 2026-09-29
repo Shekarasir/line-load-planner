@@ -94,6 +94,9 @@ function database_file()
     foreach ($roots as $r) {
         if (in_array(basename($r), ['public_html', 'www', 'htdocs', 'httpdocs', 'html'], true)) $candidates[] = dirname($r);
     }
+    // cPanel-style accounts live in /home/<user>/… — use that home even when the
+    // site's folder is outside public_html (e.g. a subdomain folder).
+    if (preg_match('#^(/home\d*/[^/]+)/#', str_replace('\\', '/', __DIR__), $m)) $candidates[] = $m[1];
     if (function_exists('posix_getpwuid') && function_exists('posix_geteuid')) {
         $pw = @posix_getpwuid(posix_geteuid());
         if (!empty($pw['dir'])) $candidates[] = $pw['dir'];

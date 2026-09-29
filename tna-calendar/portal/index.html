@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#233f99" />
+  <title>Lakkifashions · Apps</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <style>
+    :root {
+      --brand: #233f99;
+      --brand-dark: #172a61;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --card: #ffffff;
+      --line: #e2e8f0;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      min-height: 100vh;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: var(--ink);
+      background: linear-gradient(180deg, var(--brand) 0, var(--brand-dark) 340px, #eef2f7 340px);
+      display: flex;
+      flex-direction: column;
+    }
+    header { color: #fff; text-align: center; padding: 56px 16px 40px; }
+    header h1 { margin: 0; font-size: clamp(1.5rem, 4vw, 2.25rem); letter-spacing: .01em; }
+    header p { margin: 8px 0 0; color: #c7d4ff; font-size: .95rem; text-transform: uppercase; letter-spacing: .12em; }
+    main { width: 100%; max-width: 920px; margin: 0 auto; padding: 0 16px 48px; flex: 1; }
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    a.app {
+      display: flex; gap: 16px; align-items: flex-start;
+      background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+      padding: 22px; text-decoration: none; color: inherit;
+      box-shadow: 0 6px 24px rgb(15 23 42 / .08);
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    }
+    a.app:hover, a.app:focus-visible { transform: translateY(-2px); box-shadow: 0 10px 30px rgb(15 23 42 / .14); border-color: #b9c8f5; outline: none; }
+    .icon { flex: none; width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; background: #eef4ff; color: var(--brand); }
+    .icon.green { background: #e9f8f1; color: #0f7a4f; }
+    .icon svg { width: 28px; height: 28px; }
+    .app h2 { margin: 2px 0 4px; font-size: 1.1rem; }
+    .app p { margin: 0; color: var(--muted); font-size: .92rem; line-height: 1.45; }
+    .app .go { margin-top: 10px; font-size: .85rem; font-weight: 600; color: var(--brand); }
+    footer { text-align: center; color: var(--muted); font-size: .8rem; padding: 16px 16px 28px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Lakkifashions Private Limited</h1>
+    <p>Production &amp; Planning Apps</p>
+  </header>
+
+  <main>
+    <div class="grid">
+      <a class="app" href="https://tna.lakkifashions.in/">
+        <span class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>
+        </span>
+        <span>
+          <h2>T&amp;A Calendar</h2>
+          <p>Time &amp; Action plans for every order: task dates from lead time, owners, sub-tasks, tracking and A4 print.</p>
+          <div class="go">Open →</div>
+        </span>
+      </a>
+
+      <a class="app" href="https://lineload.lakkifashions.in/">
+        <span class="icon green" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/></svg>
+        </span>
+        <span>
+          <h2>Line Load Planner</h2>
+          <p>Production line loading, orders, allocation and achieved volumes.</p>
+          <div class="go">Open →</div>
+        </span>
+      </a>
+    </div>
+  </main>
+
+  <footer>© <span id="y"></span> Lakkifashions Private Limited</footer>
+  <script>document.getElementById('y').textContent = new Date().getFullYear();</script>
+</body>
+</html>

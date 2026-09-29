@@ -55,18 +55,57 @@ function app_base_path()
     return rtrim($dir, '/') . '/';
 }
 
+function path_is_inside($path, $root)
+{
+    if (!$root) return false;
+    $root = rtrim(str_replace('\\', '/', $root), '/') . '/';
+    return strpos(rtrim(str_replace('\\', '/', $path), '/') . '/', $root) === 0;
+}
+
 /**
- * Where the SQLite file lives. Preferred: a "tna-data" folder beside public_html
- * (not reachable from the web). Fallback: a data/ folder inside the app with a
- * random, unguessable file name and a deny-all .htaccess.
+ * Folders that are served on the web: the site's document root and the
+ * account's public_html (addon domains often live inside public_html).
+ */
+function web_roots()
+{
+    $roots = [];
+    $docRoot = realpath($_SERVER['DOCUMENT_ROOT'] ?? '');
+    if ($docRoot) $roots[] = $docRoot;
+    $appDir = dirname(__DIR__);
+    for ($d = $appDir; $d !== dirname($d); $d = dirname($d)) {
+        if (in_array(basename($d), ['public_html', 'www', 'htdocs', 'httpdocs', 'html'], true)) $roots[] = $d;
+    }
+    $roots[] = $appDir;
+    return $roots;
+}
+
+/**
+ * Where the SQLite file lives. Preferred: a "tna-data" folder in the hosting
+ * account's home, next to public_html (never reachable from the web). Fallback:
+ * a data/ folder inside the app with a random, unguessable file name and a
+ * deny-all .htaccess.
  */
 function database_file()
 {
     if (defined('TNA_DB_FILE') && TNA_DB_FILE) return TNA_DB_FILE;
 
-    $outside = dirname(__DIR__, 3) . '/tna-data';
-    if ((is_dir($outside) || @mkdir($outside, 0700, true)) && is_writable($outside)) {
-        return $outside . '/tna.sqlite';
+    $roots = web_roots();
+    $candidates = [];
+    foreach ($roots as $r) {
+        if (in_array(basename($r), ['public_html', 'www', 'htdocs', 'httpdocs', 'html'], true)) $candidates[] = dirname($r);
+    }
+    if (function_exists('posix_getpwuid') && function_exists('posix_geteuid')) {
+        $pw = @posix_getpwuid(posix_geteuid());
+        if (!empty($pw['dir'])) $candidates[] = $pw['dir'];
+    }
+    $candidates[] = dirname(__DIR__, 3);
+
+    foreach ($candidates as $base) {
+        $dir = rtrim($base, '/') . '/tna-data';
+        $public = false;
+        foreach ($roots as $r) $public = $public || path_is_inside($dir, $r);
+        if ($public) continue;
+        if ((is_dir($dir) || @mkdir($dir, 0700, true)) && is_writable($dir)) return $dir . '/tna.sqlite';
     }
 
     $inside = dirname(__DIR__) . '/data';

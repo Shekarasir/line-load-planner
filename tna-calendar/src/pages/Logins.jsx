@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { KeyRound, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Download, KeyRound, Pencil, Plus, Trash2 } from 'lucide-react';
 import { api, errorText } from '../lib/api.js';
 import { useAsync } from '../lib/useAsync.js';
 import { useAuth } from '../components/Auth.jsx';
@@ -79,9 +79,14 @@ export default function Logins() {
         title="Manage Logins"
         subtitle="Who can sign in to the T&A Calendar. Admins can also manage logins."
         actions={
-          <button className="btn-primary" onClick={() => open(null)}>
-            <Plus className="h-4 w-4" /> Add Login
-          </button>
+          <>
+            <a href={api.backupUrl()} className="btn-secondary" download title="All orders, tasks and staff as a JSON file">
+              <Download className="h-4 w-4" /> Download backup
+            </a>
+            <button className="btn-primary" onClick={() => open(null)}>
+              <Plus className="h-4 w-4" /> Add Login
+            </button>
+          </>
         }
       />
 

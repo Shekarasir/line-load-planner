@@ -8,10 +8,10 @@ desktop or phone, and print a clean A4 T&A sheet.
 | Layer    | Tech |
 |----------|------|
 | Frontend | Vite + React 19, Tailwind CSS 3, lucide-react, date-fns, React Router |
-| Backend  | Node.js 22 + Express 5 (REST API under `/api`) |
+| Backend  | Node.js 22 + Express 5 (REST API under `/api`) **or** PHP 7.4+ (`php/api.php`) |
 | Database | SQLite via Node's built-in `node:sqlite` (no native build step) |
 | Print    | Dedicated `@media print` stylesheet, A4 portrait/landscape |
-| Deploy   | Dockerfile + docker-compose with Caddy (auto-HTTPS for `tna.lakkifashions.com`) |
+| Deploy   | PHP package for ordinary web hosting (`npm run build:php`), or Docker / Render (Node) |
 
 ## Quick start (development)
 
@@ -22,7 +22,7 @@ cd tna-calendar
 npm install
 npm run seed      # optional: 6 sample staff so owner drop-downs aren't empty
 npm run dev       # API on :3001, web app on http://localhost:5173
-npm test          # date-calculation, validation and API tests
+npm test          # date rules + Node API + PHP API tests (PHP tests need the php CLI)
 ```
 
 The database file is created at `./data/tna.db` (override with `DB_PATH`).
@@ -100,6 +100,8 @@ choice is remembered. In the browser's print dialog, leave *Margins* on *Default
 ```
 shared/tna.js          task templates, date calculation, validation (client + server)
 server/                Express app, SQLite schema, routes (users, orders, progress)
+php/                   PHP version of the same API for shared hosting
+scripts/build-php.mjs  builds the PHP upload package (dist-php/)
 src/pages/             Dashboard, TnaGenerator, OrderDetail, UserMaster, PrintView
 src/components/        Layout, Gantt, Modal, Toast, shared UI controls
 src/lib/               API client and data-loading hook
@@ -120,9 +122,59 @@ test/                  node:test unit + API tests
 | GET | `/api/auth/me` | current login |
 | GET/POST/PUT/DELETE | `/api/accounts[/:id]` | manage logins (admin only) |
 
-All endpoints except `/api/health` and `/api/auth/login` require a signed-in session.
+All endpoints except `/api/health`, `/api/auth/login`, `/api/auth/status` and first-run
+`/api/auth/setup` require a signed-in session. Admins can also `GET /api/backup`.
 
-## Deployment to `tna.lakkifashions.com`
+The PHP version exposes the same endpoints as `api.php?r=/path` (e.g. `api.php?r=/orders/5`);
+PUT/PATCH/DELETE may be sent as `POST …&_method=PUT` for hosts that block those methods.
+
+## Install on the existing website (PHP hosting: CWP / cPanel) — recommended
+
+The same app also ships as a **PHP version** that runs on ordinary web hosting, next to the
+Line Load planner. It needs **PHP 7.4+ with the `pdo_sqlite` extension** (enabled on almost
+every host). No Node.js, no database setup, no DNS change. It opens at
+**`https://lakkifashions.com/tna/`**.
+
+### Build the upload package (developer)
+
+```bash
+npm run build:php      # → dist-php/  (upload its contents to public_html/tna/)
+```
+
+### Install in CWP (Control Web Panel)
+
+1. Log in to CWP → **File Management → File Manager** → open **`public_html`**.
+2. Create a folder named **`tna`** and open it.
+3. **Upload** `tna-upload.zip`, right-click it → **Extract**. The folder should now contain
+   `index.html`, `api.php`, `assets/`, `lib/` … (you can delete the zip afterwards).
+4. Check the server: open `https://lakkifashions.com/tna/api.php?r=/health`.
+   You should see `{"ok":true,"php":"…","sqlite":true}`.
+5. Open **`https://lakkifashions.com/tna/`** → the **First-time setup** screen appears.
+   Create the admin login **straight away** (the first person to open it becomes admin).
+6. Add staff in **User Master** and logins in **Manage logins**.
+
+**Where the data is kept:** a SQLite file in `/home/<user>/tna-data/` — next to `public_html`,
+so it can't be downloaded from the web. (If that folder can't be created, the app uses
+`tna/data/` with a random file name and a deny-all `.htaccess`.) Updating the app never touches it.
+
+**Updating:** upload the new `tna-upload.zip` into `public_html/tna/` and extract it, replacing
+files. Logins and data stay as they are.
+
+**Backups:** admins can click **Manage logins → Download backup** for a JSON copy of all
+orders, tasks and staff. Keep copies in OneDrive / Google Drive. CWP's own account backup also
+includes the `tna-data` folder.
+
+**Troubleshooting**
+| Symptom | Fix |
+|---|---|
+| `"sqlite":false` or "pdo_sqlite is not enabled" | Enable the *pdo_sqlite* PHP extension (CWP → PHP settings / ask the host) |
+| "Cannot create a data folder" | Make `public_html/tna` writable (permissions 755) or create `/home/<user>/tna-data` |
+| 500 error on every page | Check file permissions: folders 755, files 644 |
+| Old screens after an update | Hard-refresh the browser (Ctrl + F5) |
+
+Optional settings (database path, time zone) go in `config.php` — see `config.sample.php`.
+
+## Alternative: Node.js deployment to `tna.lakkifashions.com`
 
 The app is a single Node process (API + built client) with a SQLite file, so it needs a host
 with a persistent disk — a small VPS or any Docker host.

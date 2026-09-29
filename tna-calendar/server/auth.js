@@ -114,8 +114,38 @@ export function requireAdmin(req, res, next) {
 
 export function authRouter(db) {
   const router = Router();
+
+  const startSession = (req, res, account) => {
+    const token = randomBytes(32).toString('base64url');
+    db.prepare(`DELETE FROM sessions WHERE expires_at <= datetime('now')`).run();
+    db.prepare(`INSERT INTO sessions (token_hash, account_id, expires_at) VALUES (?, ?, datetime('now', ?))`).run(
+      tokenHash(token),
+      account.id,
+      `+${SESSION_DAYS} days`,
+    );
+    setSessionCookie(req, res, token, SESSION_DAYS * 86400);
+  };
   // Simple in-memory brute-force protection, keyed by IP + username.
   const failures = new Map();
+
+  router.get('/status', (req, res) => {
+    res.json({ needs_setup: db.prepare('SELECT COUNT(*) AS n FROM accounts').get().n === 0 });
+  });
+
+  // First run without ADMIN_PASSWORD: the first visitor creates the admin login.
+  router.post('/setup', (req, res) => {
+    if (db.prepare('SELECT COUNT(*) AS n FROM accounts').get().n > 0) {
+      throw new HttpError(409, 'The app is already set up. Please sign in.');
+    }
+    const username = cleanUsername(req.body.username || 'admin');
+    validatePassword(req.body.password);
+    const { lastInsertRowid } = db
+      .prepare(`INSERT INTO accounts (username, display_name, password_hash, role) VALUES (?, ?, ?, 'admin')`)
+      .run(username, String(req.body.display_name ?? 'Administrator').trim(), hashPassword(req.body.password));
+    const account = db.prepare('SELECT * FROM accounts WHERE id = ?').get(lastInsertRowid);
+    startSession(req, res, account);
+    res.status(201).json(publicAccount(account));
+  });
 
   router.post('/login', (req, res) => {
     const username = String(req.body.username ?? '').trim().toLowerCase();
@@ -131,14 +161,7 @@ export function authRouter(db) {
       throw new HttpError(401, 'Wrong username or password');
     }
     failures.delete(key);
-    const token = randomBytes(32).toString('base64url');
-    db.prepare(`DELETE FROM sessions WHERE expires_at <= datetime('now')`).run();
-    db.prepare(`INSERT INTO sessions (token_hash, account_id, expires_at) VALUES (?, ?, datetime('now', ?))`).run(
-      tokenHash(token),
-      account.id,
-      `+${SESSION_DAYS} days`,
-    );
-    setSessionCookie(req, res, token, SESSION_DAYS * 86400);
+    startSession(req, res, account);
     res.json(publicAccount(account));
   });
 
@@ -164,6 +187,26 @@ export function authRouter(db) {
   });
 
   return router;
+}
+
+/** Admin-only JSON export of all data. */
+export function backupHandler(db) {
+  return [
+    requireAdmin,
+    (req, res) => {
+      const all = (table) => db.prepare(`SELECT * FROM ${table} ORDER BY id`).all();
+      res.setHeader('Content-Disposition', `attachment; filename="tna-backup-${new Date().toISOString().slice(0, 10)}.json"`);
+      res.json({
+        app: 'Lakkifashions T&A Calendar',
+        exported_at: new Date().toISOString(),
+        users: all('users'),
+        orders: all('orders'),
+        tasks: all('tasks'),
+        subtasks: all('subtasks'),
+        accounts: all('accounts').map(publicAccount),
+      });
+    },
+  ];
 }
 
 /** Admin-only management of login accounts. */

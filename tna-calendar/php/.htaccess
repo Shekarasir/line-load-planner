@@ -1,0 +1,10 @@
+# T&A Calendar — only safe, optional directives (a bad directive would break the folder).
+DirectoryIndex index.html
+<IfModule mod_headers.c>
+  <FilesMatch "\.(js|css|svg)$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+  <FilesMatch "index\.html$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>

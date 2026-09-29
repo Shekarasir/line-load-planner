@@ -14,7 +14,8 @@
     "build": "vite build",
     "start": "node --disable-warning=ExperimentalWarning server/index.js",
     "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js",
-    "seed": "node --disable-warning=ExperimentalWarning server/seed.js"
+    "seed": "node --disable-warning=ExperimentalWarning server/seed.js",
+    "build:php": "node scripts/build-php.mjs"
   },
   "dependencies": {
     "date-fns": "^4.4.0",

@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { usersRouter } from './routes/users.js';
 import { ordersRouter, progressRouter } from './routes/orders.js';
 import { errorHandler } from './http.js';
-import { accountsRouter, authRouter, requireLogin, sessionMiddleware } from './auth.js';
+import { accountsRouter, authRouter, backupHandler, requireLogin, sessionMiddleware } from './auth.js';
 
 const DIST = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 
@@ -22,6 +22,7 @@ export function createApp(db) {
   // Everything below requires a signed-in user.
   app.use('/api', requireLogin);
   app.use('/api/accounts', accountsRouter(db));
+  app.get('/api/backup', ...backupHandler(db));
   app.use('/api/users', usersRouter(db));
   app.use('/api/orders', ordersRouter(db));
   app.use('/api', progressRouter(db));

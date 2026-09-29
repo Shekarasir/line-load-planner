@@ -17,9 +17,9 @@ COPY --from=build /app/dist ./dist
 COPY package.json ./
 COPY server ./server
 COPY shared ./shared
-RUN mkdir -p /data && chown node:node /data
-USER node
+# Runs as root so hosted volumes (Render/Railway disks are root-owned) are writable.
+RUN mkdir -p /data
 VOLUME ["/data"]
 EXPOSE 3001
-HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://127.0.0.1:3001/api/health || exit 1
+HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://127.0.0.1:${PORT}/api/health || exit 1
 CMD ["node", "--disable-warning=ExperimentalWarning", "server/index.js"]

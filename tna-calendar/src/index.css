@@ -85,7 +85,7 @@
 
 .print-doc {
   font-family: Arial, Helvetica, sans-serif;
-  font-size: 8.5pt;
+  font-size: 10pt;
   line-height: 1.25;
   color: #000;
 }
@@ -106,13 +106,13 @@
   object-fit: contain;
 }
 .print-doc .doc-title h1 {
-  font-size: 15pt;
+  font-size: 16pt;
   font-weight: 700;
   letter-spacing: 0.02em;
   margin: 0;
 }
 .print-doc .doc-title h2 {
-  font-size: 10.5pt;
+  font-size: 11pt;
   font-weight: 600;
   margin: 1mm 0 0;
   text-transform: uppercase;
@@ -140,16 +140,26 @@
 .print-doc .plan th,
 .print-doc .plan td {
   border: 1px solid #000;
-  padding: 1mm 1.5mm;
+  padding: 1mm 1.2mm;
   vertical-align: top;
-  word-wrap: break-word;
-  overflow-wrap: anywhere;
+  /* wrap only between words — never split a name or word in the middle */
+  overflow-wrap: normal;
+  word-break: normal;
+}
+/* Dept., Phone, Plan Start, Plan End always stay on one line */
+.print-doc .plan td:nth-child(3),
+.print-doc .plan td:nth-child(5),
+.print-doc .plan td:nth-child(6),
+.print-doc .plan td:nth-child(7),
+.print-doc .plan th:nth-child(6),
+.print-doc .plan th:nth-child(7) {
+  white-space: nowrap;
 }
 .print-doc .plan th {
   background: #e5e5e5;
   font-weight: 700;
   text-align: left;
-  font-size: 8pt;
+  font-size: 10pt;
 }
 .print-doc .plan .num,
 .print-doc .plan .c {
@@ -160,7 +170,7 @@
   background: #f7f7f7;
 }
 .print-doc .plan tr.child td {
-  font-size: 8.5pt;
+  font-size: 10pt;
 }
 .print-doc .plan tr.child .name {
   padding-left: 6mm;
@@ -182,13 +192,13 @@
   padding-top: 1mm;
   text-align: center;
   font-weight: 600;
-  font-size: 8.5pt;
+  font-size: 10pt;
 }
 .print-doc .doc-footer {
   margin-top: 4mm;
   display: flex;
   justify-content: space-between;
-  font-size: 7.5pt;
+  font-size: 8.5pt;
   color: #444;
 }
 

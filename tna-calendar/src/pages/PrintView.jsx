@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ArrowLeft, Printer } from 'lucide-react';
-import { COMPANY_NAME, displayDate, effectiveStatus } from '../../shared/tna.js';
+import { COMPANY_NAME, displayDate, effectiveStatus, toDate } from '../../shared/tna.js';
 import { api } from '../lib/api.js';
 import { useAsync } from '../lib/useAsync.js';
 import { ErrorState, Loading } from '../components/ui.jsx';
@@ -12,9 +12,15 @@ const PAGE_MARGIN_MM = 8;
 const PRINTABLE_HEIGHT_MM = 297 - 2 * PAGE_MARGIN_MM;
 const MM_TO_PX = 96 / 25.4;
 
+// Compact date for the table columns, e.g. 01-Oct-26.
+function shortDate(value) {
+  const d = toDate(value);
+  return d ? format(d, 'dd-MMM-yy') : '—';
+}
+
 function statusText(item) {
   const s = effectiveStatus(item);
-  return item.actual_date ? `${s} (${displayDate(item.actual_date)})` : s;
+  return item.actual_date ? `${s} (${shortDate(item.actual_date)})` : s;
 }
 
 // The company logo is a file placed next to the app: logo.png (or logo.jpg / logo.svg).
@@ -79,27 +85,25 @@ export function TnaDocument({ order, onLogoLoad }) {
 
       <table className="plan">
         <colgroup>
-          <col style={{ width: '5.5%' }} />
-          <col style={{ width: '22%' }} />
-          <col style={{ width: '9%' }} />
-          <col style={{ width: '12%' }} />
+          <col style={{ width: '5%' }} />
+          <col style={{ width: '20%' }} />
           <col style={{ width: '11%' }} />
-          <col style={{ width: '9.5%' }} />
-          <col style={{ width: '9.5%' }} />
+          <col style={{ width: '15%' }} />
+          <col style={{ width: '16%' }} />
           <col style={{ width: '10.5%' }} />
-          <col style={{ width: '11%' }} />
+          <col style={{ width: '10.5%' }} />
+          <col style={{ width: '12%' }} />
         </colgroup>
         <thead>
           <tr>
             <th className="c">Sr No</th>
             <th>Task / Sub-task</th>
-            <th>Department</th>
+            <th>Dept.</th>
             <th>Owner</th>
             <th>Phone</th>
             <th>Plan Start</th>
             <th>Plan End</th>
             <th>Actual / Status</th>
-            <th>Sign-off</th>
           </tr>
         </thead>
         <tbody>
@@ -110,10 +114,9 @@ export function TnaDocument({ order, onLogoLoad }) {
               <td>{t.department}</td>
               <td>{t.owner_name || ''}</td>
               <td>{t.owner_phone || ''}</td>
-              <td>{displayDate(t.start_date)}</td>
-              <td>{displayDate(t.end_date)}</td>
+              <td>{shortDate(t.start_date)}</td>
+              <td>{shortDate(t.end_date)}</td>
               <td>{statusText(t)}</td>
-              <td />
             </tr>,
             ...t.subtasks.map((s, j) => (
               <tr key={`s${s.id}`} className="child">
@@ -124,11 +127,10 @@ export function TnaDocument({ order, onLogoLoad }) {
                 <td>{t.department}</td>
                 <td>{s.owner_name || ''}</td>
                 <td>{s.owner_phone || ''}</td>
-                <td>{displayDate(s.start_date)}</td>
-                <td>{displayDate(s.end_date)}</td>
+                <td>{shortDate(s.start_date)}</td>
+                <td>{shortDate(s.end_date)}</td>
                 <td>{statusText(s)}</td>
-                <td />
-              </tr>
+                </tr>
             )),
           ])}
         </tbody>

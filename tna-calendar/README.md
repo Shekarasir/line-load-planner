@@ -67,15 +67,16 @@ Each task's dates are `booking_date + round(lead_time × pct)`:
 |---|------|--------:|------:|--------------|
 | 1 | Yarn Procurement | 0 | 10 | Fabric |
 | 2 | Fabric In-house | 25 | 35 | Fabric |
-| 3 | Stitching Accessories | 25 | 35 | Store |
-| 4 | Packaging Accessories | 35 | 45 | Store |
-| 5 | Pre-production Approval | 35 | 45 | Merch |
-| 6 | Pre-production Meeting | 36 | 46 | Production |
-| 7 | Cutting | 45 | 50 | Production |
+| 3 | Accessories | 25 | 45 | Store |
+| 4 | Pre-production Approval | 35 | 45 | Merch |
+| 5 | Pre-production Meeting | 36 | 46 | Production |
+| 6 | Production | 45 | 50 | Production |
+| 7 | QA | 50 | 75 | Production |
 | 8 | Final Inspection | 75 | 90 | Production |
 | 9 | OCR (Order Closing Report) | 95 | 95 | OCR |
 | 10 | P&L Report | 100 | 100 | Costing |
 
+- Orders created before a change to this list keep their own tasks and timings.
 - Task dates can be edited by hand. Edited tasks are marked *edited* and keep their dates when
   the order dates change; *reset* / *Recalculate all* restores the calculated dates.
 - Delivery date must be after the booking date.

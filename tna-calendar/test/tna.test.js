@@ -22,7 +22,12 @@ test('generates the 10 standard tasks from lead-time percentages', () => {
   const byName = Object.fromEntries(tasks.map((t) => [t.task_name, t]));
   assert.deepEqual([byName['Yarn Procurement'].start_date, byName['Yarn Procurement'].end_date], ['2026-01-01', '2026-01-11']);
   assert.deepEqual([byName['Fabric In-house'].start_date, byName['Fabric In-house'].end_date], ['2026-01-26', '2026-02-05']);
-  assert.deepEqual([byName['Cutting'].start_date, byName['Cutting'].end_date], ['2026-02-15', '2026-02-20']);
+  assert.deepEqual([byName['Production'].start_date, byName['Production'].end_date], ['2026-02-15', '2026-02-20']);
+  assert.deepEqual([byName['Accessories'].start_date, byName['Accessories'].end_date], ['2026-01-26', '2026-02-15']);
+  assert.deepEqual([byName['QA'].start_date, byName['QA'].end_date], ['2026-02-20', '2026-03-17']);
+  assert.equal(byName['Cutting'], undefined);
+  assert.equal(byName['Stitching Accessories'], undefined);
+  assert.equal(byName['Packaging Accessories'], undefined);
   assert.equal(byName['OCR (Order Closing Report)'].start_date, byName['OCR (Order Closing Report)'].end_date);
   assert.deepEqual([byName['P&L Report'].start_date, byName['P&L Report'].end_date], ['2026-04-11', '2026-04-11']);
   assert.equal(byName['OCR (Order Closing Report)'].department, 'OCR');
@@ -31,7 +36,7 @@ test('generates the 10 standard tasks from lead-time percentages', () => {
 
 test('percentages round to the nearest day', () => {
   const tasks = generateStandardTasks('2026-01-01', '2026-01-31'); // 30-day lead
-  const ppm = tasks.find((t) => t.seq === 6); // 36% → 10.8 → 11, 46% → 13.8 → 14
+  const ppm = tasks.find((t) => t.task_name === 'Pre-production Meeting'); // 36% → 10.8 → 11, 46% → 13.8 → 14
   assert.equal(ppm.start_date, '2026-01-12');
   assert.equal(ppm.end_date, '2026-01-15');
 });
@@ -45,6 +50,13 @@ test('recalculation keeps manually overridden tasks and sub-tasks', () => {
   assert.equal(next[0].task_owner_id, 7);
   assert.equal(next[1].start_date, '2026-02-26');
   assert.equal(next[1].subtasks.length, 1);
+});
+
+test('orders made with an older task list keep their own percentages on recalculation', () => {
+  const old = [{ seq: 3, task_name: 'Stitching Accessories', start_pct: 25, end_pct: 35, start_date: '', end_date: '', subtasks: [] }];
+  const [t] = recalculateTasks(old, '2026-01-01', '2026-04-11');
+  assert.equal(t.task_name, 'Stitching Accessories');
+  assert.deepEqual([t.start_date, t.end_date], ['2026-01-26', '2026-02-05']);
 });
 
 test('delivery date must be after booking date', () => {
@@ -77,9 +89,9 @@ test('open tasks past their end date are effectively Delayed', () => {
   assert.equal(effectiveStatus({ status: 'Completed', end_date: '2026-01-01' }, today), 'Completed');
 });
 
-test('templates cover the specified 10 tasks', () => {
+test('templates cover the 10 standard tasks', () => {
   assert.deepEqual(
     TASK_TEMPLATES.map((t) => [t.start_pct, t.end_pct]),
-    [[0, 10], [25, 35], [25, 35], [35, 45], [35, 45], [36, 46], [45, 50], [75, 90], [95, 95], [100, 100]],
+    [[0, 10], [25, 35], [25, 45], [35, 45], [36, 46], [45, 50], [50, 75], [75, 90], [95, 95], [100, 100]],
   );
 });

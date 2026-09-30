@@ -15,11 +15,11 @@ export const USER_STATUSES = ['Active', 'Inactive'];
 export const TASK_TEMPLATES = [
   { seq: 1, task_name: 'Yarn Procurement', start_pct: 0, end_pct: 10, department: 'Fabric' },
   { seq: 2, task_name: 'Fabric In-house', start_pct: 25, end_pct: 35, department: 'Fabric' },
-  { seq: 3, task_name: 'Stitching Accessories', start_pct: 25, end_pct: 35, department: 'Store' },
-  { seq: 4, task_name: 'Packaging Accessories', start_pct: 35, end_pct: 45, department: 'Store' },
-  { seq: 5, task_name: 'Pre-production Approval', start_pct: 35, end_pct: 45, department: 'Merch' },
-  { seq: 6, task_name: 'Pre-production Meeting', start_pct: 36, end_pct: 46, department: 'Production' },
-  { seq: 7, task_name: 'Cutting', start_pct: 45, end_pct: 50, department: 'Production' },
+  { seq: 3, task_name: 'Accessories', start_pct: 25, end_pct: 45, department: 'Store' },
+  { seq: 4, task_name: 'Pre-production Approval', start_pct: 35, end_pct: 45, department: 'Merch' },
+  { seq: 5, task_name: 'Pre-production Meeting', start_pct: 36, end_pct: 46, department: 'Production' },
+  { seq: 6, task_name: 'Production', start_pct: 45, end_pct: 50, department: 'Production' },
+  { seq: 7, task_name: 'QA', start_pct: 50, end_pct: 75, department: 'Production' },
   { seq: 8, task_name: 'Final Inspection', start_pct: 75, end_pct: 90, department: 'Production' },
   { seq: 9, task_name: 'OCR (Order Closing Report)', start_pct: 95, end_pct: 95, department: 'OCR' },
   { seq: 10, task_name: 'P&L Report', start_pct: 100, end_pct: 100, department: 'Costing' },
@@ -96,8 +96,10 @@ export function generateStandardTasks(bookingDate, deliveryDate) {
 export function recalculateTasks(tasks, bookingDate, deliveryDate) {
   return tasks.map((task) => {
     if (task.date_overridden) return task;
-    const template = TASK_TEMPLATES.find((t) => t.seq === task.seq) || task;
-    if (template.start_pct == null) return task;
+    // Use the percentages stored on the task itself, so orders created with an
+    // older task list keep their own timing when their dates change.
+    const template = task.start_pct != null ? task : TASK_TEMPLATES.find((t) => t.task_name === task.task_name);
+    if (!template || template.start_pct == null) return task;
     return { ...task, ...calculateTaskDates(template, bookingDate, deliveryDate) };
   });
 }

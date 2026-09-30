@@ -92,6 +92,10 @@ Each task's dates are `booking_date + round(lead_time × pct)`:
 
 ## Printing
 
+**Company logo:** upload your logo as `logo.png` (or `logo.jpg` / `logo.svg`) into the app's
+folder (next to `index.html`); it appears at the top right of every printout. App updates never
+replace it. Without a logo the space stays empty.
+
 Every T&A prints on **one A4 portrait page**. The print page measures the document and scales it
 down just enough to fit (the toolbar shows e.g. "scaled to 80%" for long plans); short plans print
 at 100%. Navigation, buttons, inputs and dialogs are hidden. In the browser's print dialog keep

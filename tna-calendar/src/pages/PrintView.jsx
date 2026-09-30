@@ -17,14 +17,33 @@ function statusText(item) {
   return item.actual_date ? `${s} (${displayDate(item.actual_date)})` : s;
 }
 
+// The company logo is a file placed next to the app: logo.png (or logo.jpg / logo.svg).
+// It is not part of the app package, so app updates never overwrite it.
+const LOGO_FILES = ['logo.png', 'logo.jpg', 'logo.svg'];
+
+function CompanyLogo({ onLoad }) {
+  const [index, setIndex] = useState(0);
+  if (index >= LOGO_FILES.length) return null; // no logo uploaded — leave the space empty
+  return (
+    <img
+      className="doc-logo"
+      src={`${import.meta.env.BASE_URL}${LOGO_FILES[index]}`}
+      alt=""
+      onLoad={onLoad}
+      onError={() => setIndex((i) => i + 1)}
+    />
+  );
+}
+
 /** The printable A4 T&A document. Also rendered on screen as an A4 preview. */
-export function TnaDocument({ order }) {
+export function TnaDocument({ order, onLogoLoad }) {
   const printedAt = format(new Date(), 'dd-MMM-yyyy HH:mm');
   return (
     <div className="print-doc">
       <div className="doc-title">
         <h1>{COMPANY_NAME}</h1>
         <h2>Time &amp; Action Calendar</h2>
+        <CompanyLogo onLoad={onLogoLoad} />
       </div>
 
       <table className="meta">
@@ -215,7 +234,7 @@ export default function PrintView() {
         <div className="a4-sheet">
           <div className="fit-box">
             <div ref={docRef} className="fit-content">
-              <TnaDocument order={order} />
+              <TnaDocument order={order} onLogoLoad={fitToPage} />
             </div>
           </div>
         </div>

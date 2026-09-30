@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { differenceInCalendarDays } from 'date-fns';
-import { AlertTriangle, CheckCircle2, ClipboardList, Clock, PackageSearch, Plus, Search } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ClipboardList, Clock, PackageSearch, Plus, Search, Trash2 } from 'lucide-react';
 import { displayDate, toDate } from '../../shared/tna.js';
 import { api, errorText } from '../lib/api.js';
 import { useAsync } from '../lib/useAsync.js';
 import { useToast } from '../components/Toast.jsx';
+import { useAuth } from '../components/Auth.jsx';
 import { ErrorState, Loading, PageHeader, PhoneLink, StatusBadge, StatusSelect } from '../components/ui.jsx';
 
 function Stat({ icon: Icon, label, value, tone }) {
@@ -43,6 +44,8 @@ function dueLabel(endDate) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { account } = useAuth();
+  const isAdmin = account?.role === 'admin';
   const notify = useToast();
   const orders = useAsync(() => api.orders.list(), []);
   const open = useAsync(() => api.progress.openItems(), []);
@@ -83,6 +86,19 @@ export default function Dashboard() {
       }).length,
     };
   }, [orders.data, open.data]);
+
+  // Only admins see this; the server also refuses deletes from other logins.
+  const deleteOrder = async (o) => {
+    if (!window.confirm(`Delete order ${o.order_no} (${o.buyer_name}) and its whole T&A plan? This cannot be undone.`)) return;
+    try {
+      await api.orders.remove(o.id);
+      notify(`Order ${o.order_no} deleted`);
+      orders.reload();
+      open.reload();
+    } catch (err) {
+      notify(errorText(err), 'error');
+    }
+  };
 
   const updateItem = async (item, status) => {
     try {
@@ -197,6 +213,7 @@ export default function Dashboard() {
                     <th className="w-40">Progress</th>
                     <th>Status</th>
                     <th>Next Task · Owner</th>
+                    {isAdmin && <th className="w-12" aria-label="Actions" />}
                   </tr>
                 </thead>
                 <tbody>
@@ -235,6 +252,18 @@ export default function Dashboard() {
                           </span>
                         )}
                       </td>
+                      {isAdmin && (
+                        <td className="text-right" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            className="btn-ghost text-red-600 hover:bg-red-50"
+                            onClick={() => deleteOrder(o)}
+                            aria-label={`Delete order ${o.order_no}`}
+                            title="Delete order"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -282,6 +311,13 @@ export default function Dashboard() {
                         {o.next_task.owner_name || 'Unassigned'}
                         <PhoneLink phone={o.next_task.owner_phone} />
                       </div>
+                    </div>
+                  )}
+                  {isAdmin && (
+                    <div className="flex justify-end border-t border-slate-100 px-2 py-1">
+                      <button className="btn-ghost text-sm text-red-600" onClick={() => deleteOrder(o)}>
+                        <Trash2 className="h-4 w-4" /> Delete
+                      </button>
                     </div>
                   )}
                 </li>

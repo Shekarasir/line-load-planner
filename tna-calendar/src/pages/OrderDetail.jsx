@@ -5,6 +5,7 @@ import { displayDate, effectiveStatus } from '../../shared/tna.js';
 import { api, errorText } from '../lib/api.js';
 import { useAsync } from '../lib/useAsync.js';
 import { useToast } from '../components/Toast.jsx';
+import { useAuth } from '../components/Auth.jsx';
 import Gantt from '../components/Gantt.jsx';
 import { ErrorState, Loading, PhoneLink, StatusBadge, StatusSelect } from '../components/ui.jsx';
 
@@ -32,6 +33,8 @@ export default function OrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const notify = useToast();
+  const { account } = useAuth();
+  const isAdmin = account?.role === 'admin';
   const { data: order, error, loading, reload } = useAsync(() => api.orders.get(id), [id]);
   const [view, setView] = useState('list');
 
@@ -77,16 +80,18 @@ export default function OrderDetail() {
               {order.style_number && ` · Style ${order.style_number}`}
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-2 sm:flex">
+          <div className={`grid gap-2 sm:flex ${isAdmin ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <Link to={`/orders/${id}/print?autoprint=1`} className="btn-primary" target="_blank" rel="noopener">
               <Printer className="h-4 w-4" /> <span>Print T&amp;A</span>
             </Link>
             <Link to={`/orders/${id}/edit`} className="btn-secondary">
               <Pencil className="h-4 w-4" /> Edit
             </Link>
-            <button className="btn-danger" onClick={remove}>
-              <Trash2 className="h-4 w-4" /> Delete
-            </button>
+            {isAdmin && (
+              <button className="btn-danger" onClick={remove}>
+                <Trash2 className="h-4 w-4" /> Delete
+              </button>
+            )}
           </div>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">

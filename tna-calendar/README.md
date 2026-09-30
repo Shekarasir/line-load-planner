@@ -86,14 +86,15 @@ Each task's dates are `booking_date + round(lead_time × pct)`:
   automatically. Marking a task *Completed* stamps today as its actual date.
 - Only **Active** users can be picked as owners; users who own tasks can't be deleted (mark them
   Inactive instead).
+- Only **admins** can delete orders (delete icon in the order list and on the order page); the
+  API refuses deletes from other logins.
 
 ## Printing
 
-The print stylesheet hides navigation, buttons, inputs, dialogs and backgrounds, repeats the
-table header on every page, never splits a row across pages, and prints *Page X of Y* in the
-footer (Chrome/Edge). Choose **A4 landscape** (default) or **portrait** on the print page; the
-choice is remembered. In the browser's print dialog, leave *Margins* on *Default* and turn
-*Headers and footers* off for the cleanest sheet.
+Every T&A prints on **one A4 portrait page**. The print page measures the document and scales it
+down just enough to fit (the toolbar shows e.g. "scaled to 80%" for long plans); short plans print
+at 100%. Navigation, buttons, inputs and dialogs are hidden. In the browser's print dialog keep
+*Margins: Default* and turn *Headers and footers* off.
 
 ## Project layout
 

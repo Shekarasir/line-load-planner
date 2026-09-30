@@ -10,6 +10,7 @@ import {
 } from '../../shared/tna.js';
 import { transaction } from '../db.js';
 import { HttpError } from '../http.js';
+import { requireAdmin } from '../auth.js';
 
 const OWNER_COLS = `u.name AS owner_name, u.phone_number AS owner_phone, u.department AS owner_department`;
 
@@ -180,7 +181,7 @@ export function ordersRouter(db) {
     res.json(loadOrder(db, req.params.id));
   });
 
-  router.delete('/:id', (req, res) => {
+  router.delete('/:id', requireAdmin, (req, res) => {
     const { changes } = db.prepare('DELETE FROM orders WHERE id = ?').run(req.params.id);
     if (!changes) throw new HttpError(404, 'Order not found');
     res.status(204).end();

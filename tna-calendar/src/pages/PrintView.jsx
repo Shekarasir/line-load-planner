@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ArrowLeft, Printer } from 'lucide-react';
@@ -7,15 +7,10 @@ import { api } from '../lib/api.js';
 import { useAsync } from '../lib/useAsync.js';
 import { ErrorState, Loading } from '../components/ui.jsx';
 
-const ORIENTATION_KEY = 'tna.printOrientation';
-
-function readOrientation() {
-  try {
-    return localStorage.getItem(ORIENTATION_KEY) === 'portrait' ? 'portrait' : 'landscape';
-  } catch {
-    return 'landscape';
-  }
-}
+// A4 portrait, 8 mm margins on every side → printable area 194 × 281 mm.
+const PAGE_MARGIN_MM = 8;
+const PRINTABLE_HEIGHT_MM = 297 - 2 * PAGE_MARGIN_MM;
+const MM_TO_PX = 96 / 25.4;
 
 function statusText(item) {
   const s = effectiveStatus(item);
@@ -65,15 +60,15 @@ export function TnaDocument({ order }) {
 
       <table className="plan">
         <colgroup>
-          <col style={{ width: '5%' }} />
-          <col style={{ width: '21%' }} />
-          <col style={{ width: '8.5%' }} />
+          <col style={{ width: '5.5%' }} />
+          <col style={{ width: '22%' }} />
+          <col style={{ width: '9%' }} />
           <col style={{ width: '12%' }} />
+          <col style={{ width: '11%' }} />
+          <col style={{ width: '9.5%' }} />
+          <col style={{ width: '9.5%' }} />
           <col style={{ width: '10.5%' }} />
-          <col style={{ width: '9%' }} />
-          <col style={{ width: '9%' }} />
-          <col style={{ width: '12%' }} />
-          <col style={{ width: '13%' }} />
+          <col style={{ width: '11%' }} />
         </colgroup>
         <thead>
           <tr>
@@ -141,15 +136,48 @@ export default function PrintView() {
   const { id } = useParams();
   const [params] = useSearchParams();
   const { data: order, error, loading } = useAsync(() => api.orders.get(id), [id]);
-  const [orientation, setOrientation] = useState(readOrientation);
+  const docRef = useRef(null);
+  const [scale, setScale] = useState(1);
+
+  // Shrink the whole document just enough that it fits on ONE A4 portrait page.
+  // The document is laid out wider (so rows wrap less) and then scaled down as a
+  // single block; a transformed block is never split across printed pages.
+  const fitToPage = useCallback(() => {
+    const el = docRef.current;
+    if (!el) return;
+    const available = PRINTABLE_HEIGHT_MM * MM_TO_PX * 0.99;
+    const heightAt = (s) => {
+      el.style.width = `${100 / s}%`;
+      return el.offsetHeight * s; // offsetHeight ignores the transform
+    };
+    let best = 1;
+    if (heightAt(1) > available) {
+      // Largest scale that still fits (binary search).
+      let lo = 0.25;
+      let hi = 1;
+      for (let i = 0; i < 14; i++) {
+        const mid = (lo + hi) / 2;
+        if (heightAt(mid) <= available) lo = mid;
+        else hi = mid;
+      }
+      best = lo;
+    }
+    el.style.width = `${100 / best}%`;
+    el.style.transform = best < 1 ? `scale(${best})` : '';
+    setScale(best);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!order) return;
+    fitToPage();
+    // Web fonts can change text height after first paint.
+    document.fonts?.ready?.then(fitToPage);
+  }, [order, fitToPage]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(ORIENTATION_KEY, orientation);
-    } catch {
-      /* storage unavailable — keep in memory only */
-    }
-  }, [orientation]);
+    window.addEventListener('beforeprint', fitToPage);
+    return () => window.removeEventListener('beforeprint', fitToPage);
+  }, [fitToPage]);
 
   useEffect(() => {
     if (order) document.title = `T&A - ${order.order_no} - ${order.buyer_name}`;
@@ -158,7 +186,7 @@ export default function PrintView() {
   // "Print T&A" opens this page with ?autoprint=1 — print once the data is on screen.
   useEffect(() => {
     if (!order || params.get('autoprint') !== '1') return;
-    const t = setTimeout(() => window.print(), 300);
+    const t = setTimeout(() => window.print(), 400);
     return () => clearTimeout(t);
   }, [order, params]);
 
@@ -167,25 +195,16 @@ export default function PrintView() {
 
   return (
     <div className="print-root min-h-screen bg-slate-200 pb-8">
-      {/* @page must be global; it is switched with the orientation toggle */}
-      <style>{`@page { size: A4 ${orientation}; margin: 10mm; @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt Arial, sans-serif; color: #444; } }`}</style>
+      <style>{`@page { size: A4 portrait; margin: ${PAGE_MARGIN_MM}mm; }`}</style>
 
       <div className="no-print sticky top-0 z-10 mb-4 border-b border-slate-300 bg-white shadow-sm">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-2 px-4 py-2">
           <Link to={`/orders/${id}`} className="btn-ghost">
             <ArrowLeft className="h-4 w-4" /> Back
           </Link>
-          <div className="ml-auto inline-flex rounded-lg bg-slate-100 p-1 text-sm">
-            {['portrait', 'landscape'].map((o) => (
-              <button
-                key={o}
-                onClick={() => setOrientation(o)}
-                className={`rounded-md px-3 py-1 capitalize ${orientation === o ? 'bg-white shadow-sm' : 'text-slate-500'}`}
-              >
-                A4 {o}
-              </button>
-            ))}
-          </div>
+          <span className="ml-auto text-sm text-slate-500">
+            A4 portrait · 1 page{scale < 1 ? ` · scaled to ${Math.round(scale * 100)}%` : ''}
+          </span>
           <button className="btn-primary" onClick={() => window.print()}>
             <Printer className="h-4 w-4" /> Print
           </button>
@@ -193,8 +212,12 @@ export default function PrintView() {
       </div>
 
       <div className="overflow-x-auto px-2">
-        <div className={`a4-sheet ${orientation}`}>
-          <TnaDocument order={order} />
+        <div className="a4-sheet">
+          <div className="fit-box">
+            <div ref={docRef} className="fit-content">
+              <TnaDocument order={order} />
+            </div>
+          </div>
         </div>
       </div>
     </div>

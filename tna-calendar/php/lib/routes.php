@@ -244,6 +244,7 @@ function route_orders($method, array $seg)
         send_json(load_order($id));
     }
     if ($method === 'DELETE') {
+        require_admin(); // only admins may delete orders
         if (!q('DELETE FROM orders WHERE id = ?', [$id])->rowCount()) throw new HttpError(404, 'Order not found');
         send_no_content();
     }

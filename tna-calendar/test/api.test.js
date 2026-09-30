@@ -120,6 +120,12 @@ test('user CRUD and order lifecycle', async () => {
   r = await call('DELETE', `/users/${asha.id}`);
   assert.equal(r.status, 409, 'cannot delete a user who owns tasks');
 
+  // Only admins may delete orders.
+  assert.equal((await call('POST', '/accounts', { username: 'viewer1', password: 'viewer-pass-1' })).status, 201);
+  const viewer = client();
+  await viewer('POST', '/auth/login', { username: 'viewer1', password: 'viewer-pass-1' });
+  assert.equal((await viewer('DELETE', `/orders/${created.id}`)).status, 403, 'non-admin cannot delete orders');
+
   r = await call('DELETE', `/orders/${created.id}`);
   assert.equal(r.status, 204);
   r = await call('DELETE', `/users/${asha.id}`);

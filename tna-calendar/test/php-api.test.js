@@ -160,7 +160,11 @@ test('PHP backend: setup, logins, users, orders, progress, backup', { skip: !has
   assert.equal(r.body.subtasks.length, 1);
   assert.equal(r.body.accounts[0].password_hash, undefined);
 
-  // Deletes
+  // Deletes — orders only by admins
+  assert.equal((await admin('POST', '/accounts', { username: 'viewer1', password: 'viewer-pass-1' })).status, 201);
+  const viewer = client();
+  await viewer('POST', '/auth/login', { username: 'viewer1', password: 'viewer-pass-1' });
+  assert.equal((await viewer('DELETE', `/orders/${created.id}`)).status, 403, 'non-admin cannot delete orders');
   assert.equal((await admin('DELETE', `/users/${asha.id}`)).status, 409);
   assert.equal((await admin('DELETE', `/orders/${created.id}`)).status, 204);
   assert.equal((await admin('DELETE', `/users/${asha.id}`)).status, 204);
